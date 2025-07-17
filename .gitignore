@@ -1,2 +1,9 @@
 DataAnalysis/
 configuration.conf
+.Trash-1000/
+call_sbatch_multiple_dt.sh
+call_sbatch_multiple_dt2.sh
+launch_ON_OMF.bash
+multiple_dt_OMF.bash
+test.bash
+test_call_sbatch.sh
