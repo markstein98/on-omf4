@@ -382,7 +382,7 @@ function main_omf(args::OMF_args, en_fname::AbstractString)
 
     jobid = get_job_id()
 
-    for t = args.iter_start:n_meas
+    for t = args.iter_start+1:n_meas
         for _ in 1:measure_every
             reset_moment!(Pi, cuda_rng)
             for __ = 1:rand(nhmc_rng, binom_distr)
@@ -492,7 +492,7 @@ function main_omf(args::OMF_args, en_fname::AbstractString, lat_fname::AbstractS
 
     jobid = get_job_id()
 
-    for t = args.iter_start:n_meas
+    for t = args.iter_start+1:n_meas
         for _ in 1:measure_every
             reset_moment!(Pi, cuda_rng)
             for __ = 1:rand(nhmc_rng, binom_distr)
