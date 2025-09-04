@@ -354,18 +354,18 @@ function main_omf(args::OMF_args, en_fname::AbstractString)
     binom_distr = Binomial(NHMC*10,1/10)
 
     indici = CuArray{Int32}(1:Npoint)
-    su_sx = CuArray{Int32}(undef, Npoint)
-    gi_dx = CuArray{Int32}(undef, Npoint)
-    circshift!(su_sx, indici, 1)
-    circshift!(gi_dx, indici, -1)
+    su__sx = CuArray{Int32}(undef, Npoint)
+    giu_dx = CuArray{Int32}(undef, Npoint)
+    circshift!(su__sx, indici, 1)
+    circshift!(giu_dx, indici, -1)
 
     # definizione degli argomenti dei kernel
     gx2_args = (x, x2, Npoint, n_comps, max_ptord, buff_vec)
-    grad_ker_args = (su_sx, gi_dx, max_ptord, Npoint, x2, fraz, rad, arg_rad,
+    grad_ker_args = (su__sx, giu_dx, max_ptord, Npoint, x2, fraz, rad, arg_rad,
                      buff_scA, buff_scB, buff_scC, unita, coupling)
-    vec_grad_args = (x, gradient, su_sx, gi_dx, buff_scA, buff_vec, max_ptord, n_comps, Npoint)
+    vec_grad_args = (x, gradient, su__sx, giu_dx, buff_scA, buff_vec, max_ptord, n_comps, Npoint)
     zero_mode_args = (x, zero_modo, Npoint)
-    comp_ener_args = (x, ener, gi_dx, max_ptord, Npoint, n_comps, x2, rad, selectdim(arg_rad, 4, 1),
+    comp_ener_args = (x, ener, giu_dx, max_ptord, Npoint, n_comps, x2, rad, selectdim(arg_rad, 4, 1),
                       buff_scA, buff_scB, buff_scC, buff_vec, buffs_sc, unita)
     # compilazione dei kernel
     gx2_c = compile_kernel(g_quadro!, gx2_args, Npoint2)
@@ -382,7 +382,7 @@ function main_omf(args::OMF_args, en_fname::AbstractString)
 
     jobid = get_job_id()
 
-    for t = args.iter_start+1:n_meas
+    for t = args.iter_start:n_meas
         for _ in 1:measure_every
             reset_moment!(Pi, cuda_rng)
             for __ = 1:rand(nhmc_rng, binom_distr)
@@ -392,7 +392,7 @@ function main_omf(args::OMF_args, en_fname::AbstractString)
         compute_energy!(energia, x, ener, zero_modo, Npoint, zero_mode, gx2, comp_ener)
         write_line(file, Array(energia))
         x_back .= x
-        args.iter_start = t
+        args.iter_start = t + 1
         if get_remaining_time(jobid) < 120
             # 2 min remaining, save state and exit
             save_state(checkpt_fname, args)
