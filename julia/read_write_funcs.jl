@@ -69,7 +69,7 @@ function get_job_name()
 end
 
 function get_remaining_time(jobid::AbstractString)
-    return 1000 # REMOVE!!! Only for testing on non-SLURM environments
+    # return 1000 # REMOVE!!! Only for testing on non-SLURM environments
     t = read(`squeue -h -j $jobid -o "%L"`, String)
     return get_seconds(t)
 end
