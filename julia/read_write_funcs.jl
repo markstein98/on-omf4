@@ -39,7 +39,7 @@ function get_energy_filename(checkpt_fname::AbstractString)
     return fname
 end
 
-function get_lat_checkpoint(lat_fname::AbstractString)
+function get_lat_checkpoint(lat_fname::AbstractString) # TODO: fix '/' bug if '/' is not present in lat_fname
     fname = "../checkpoint" * lat_fname[findlast('/', lat_fname):end] # changes directory
     fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
     return fname
@@ -69,7 +69,7 @@ function get_job_name()
 end
 
 function get_remaining_time(jobid::AbstractString)
-    # return 1000 # REMOVE!!! Only for testing on non-SLURM environments
+    return 1000 # REMOVE!!! Only for testing on non-SLURM environments
     t = read(`squeue -h -j $jobid -o "%L"`, String)
     return get_seconds(t)
 end
@@ -126,16 +126,16 @@ function remove_files(fnames...)
     end
 end
 
-mutable struct OMF_args
-    const Npoint::Int
-    const n_meas::Int
-    const NHMC::Int
-    const dt::Real
-    const n_comps::Int
-    const max_ptord::Int
-    const measure_every::Int
+mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+    const Npoint::I
+    const n_meas::I
+    const NHMC::I
+    const dt::F
+    const n_comps::I
+    const max_ptord::I
+    const measure_every::I
     const cuda_rng::CUDA.RNG
     const nhmc_rng::Random.TaskLocalRNG
-    iter_start::Int
-    x::CuArray
+    iter_start::I2
+    x::CuArray{F, 4}
 end
