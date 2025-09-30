@@ -10,10 +10,6 @@ include("read_write_funcs.jl")
 # i e k sono prima e seconda componente delle coordinate sul reticolo
 # n ∈ {1, ..., N-1} è il numero della componente, dove N è quella di O(N)
 
-@inline function reset!(v::CuDeviceArray{F, 4, 1}, i::I, k::I, n::I) where {F <: AbstractFloat, I <: Integer}
-    @inbounds v[:, i, k, n] .= 0
-end
-
 @inline function set_unity!(v::CuDeviceArray{F, 3, 1}, i::I, k::I) where {F <: AbstractFloat, I <: Integer}
     @inbounds v[:, i, k] .= 0
     @inbounds v[1, i, k] = 1
@@ -22,15 +18,6 @@ end
 @inline function set_unity_vec!(v::CuDeviceArray{F, 4, 1}, i::I, k::I, n::I) where {F <: AbstractFloat, I <: Integer}
     @inbounds v[:, i, k, n] .= 0
     @inbounds v[1, i, k, n] = 1
-end
-
-@inline function reset_sc!(v::CuDeviceArray{F, 3, 1}, i::I, k::I) where {F <: AbstractFloat, I <: Integer}
-    @inbounds v[:, i, k] .= 0
-end
-
-@inline function copia!(v::CuDeviceArray{F, 3, 1}, w::CuDeviceArray{F, 3, 1}, i::I, k::I) where {F <: AbstractFloat, I <: Integer}
-    # mette w in v
-    @inbounds @views v[:, i, k] .= w[:, i, k]
 end
 
 function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F <: AbstractFloat, I <: Integer}
