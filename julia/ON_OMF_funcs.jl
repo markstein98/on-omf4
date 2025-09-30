@@ -30,13 +30,13 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
     
     # Buffers used in computations
     vec_buffer = CuArray{F}(undef, n_ptords, Npoint, Npoint, n_comps)
-    scalar_buffs = CuArray{F}(undef, n_ords, Npoint, Npoint, 4)
+    scalar_buffs = CuArray{F}(undef, n_ptords, Npoint, Npoint, 4)
     @inbounds sc_buffA = @view scalar_buffs[:,:,:,1]
     @inbounds sc_buffB = @view scalar_buffs[:,:,:,2]
     @inbounds sc_buffC = @view scalar_buffs[:,:,:,3]
     @inbounds sc_buffD = @view scalar_buffs[:,:,:,4]
-    scalar_buffs2 = CuArray{F}(undef, n_ords, Npoint, Npoint, 4)
-    fraction = CuArray{F}(undef, n_ords, Npoint, Npoint)
+    scalar_buffs2 = CuArray{F}(undef, n_ptords, Npoint, Npoint, 4)
+    fraction = CuArray{F}(undef, n_ptords, Npoint, Npoint)
 
     # Funcitons returning the coordinates of the nearest neighbour of site (i, k) in the given direction
     @inline function neighbour_up(i::I, k::I)
@@ -55,9 +55,9 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
         return (i, mod(k, Npoint) + one(I))
     end
 
-    function get_indexes()
+    @inline function get_indexes()
         # converts from one-dimensional index ind to two-dimensional indexes i, k
-        ind = (blockIdx().x - one(T)) * blockDim().x + threadIdx().x
+        ind = (blockIdx().x - one(I)) * blockDim().x + threadIdx().x
         i::I = rem(ind-one(I), Npoint) + one(I)
         k::I = div(ind-one(I), Npoint) + one(I)
         return (i, k)
@@ -278,7 +278,7 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
             #in buff_scA metto g*fraz e poi ci sottraggo le radici
             mult_sc!(coupling, fraction, sc_buffA, i, k)
             for j::I = 1:n_ptords
-                @inbounds @views sc_buffA[j,i,k] .+= .- scalar_buffs2[j,i,k,1] .- scalar_buffs2[j,i,k,2] .- scalar_buffs2[j,i,k,3] .- scalar_buffs2[j,i,k,4]
+                @inbounds @views sc_buffA[j,i,k] += - scalar_buffs2[j,i,k,I(1)] - scalar_buffs2[j,i,k,I(2)] - scalar_buffs2[j,i,k,I(3)] - scalar_buffs2[j,i,k,I(4)]
             end
             
             # in gradient metto il risultato della moltiplicazione di sc_buffA (passaggio precedente) per x
@@ -433,7 +433,7 @@ function main_omf(args::OMF_args, en_fname::AbstractString, lat_fname::AbstractS
     zero_mode = compile_kernel(f_zeromode, (x, zero_modo), Npoint2)
     compute_ener = compile_kernel(f_ener, (x, ener, x2), Npoint2)
 
-    println("Initialization and Kernel compilation successfully complete.")
+    println(now(), ": Initialization and Kernel compilation successfully complete.")
 
     jobid = get_job_id()
 
