@@ -119,11 +119,11 @@ function save_lat(lat_fname::AbstractString, lat)
 end
 
 function remove_files(fnames...)
-    println("Execution successful. Removing checkpoint files:")
+    println(now(), ": Execution successful.")
     for fname in fnames
         if isfile(fname)
             rm(fname)
-            println("Removed ", fname)
+            println("Removed file:", fname)
         end
     end
 end
