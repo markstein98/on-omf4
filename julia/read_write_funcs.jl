@@ -128,6 +128,21 @@ function remove_files(fnames...)
     end
 end
 
+mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+    const Npoint::I
+    const n_meas::I
+    const NHMC::I
+    const dt::F
+    const n_comps::I
+    const max_ptord::I
+    const measure_every::I
+    const n_copies::I
+    const cuda_rng::CUDA.RNG
+    const nhmc_rng::Random.TaskLocalRNG
+    iter_start::I2
+    x::CuArray{F, 5}
+end
+
 mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const Npoint::I
     const n_meas::I
