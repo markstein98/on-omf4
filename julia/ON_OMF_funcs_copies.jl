@@ -250,9 +250,9 @@ function launch_main_omf(
     NHMC::I1,
     dt::F,
     n_comps::I1,
-    n_copies::I1,
     max_ptord::I1,
     measure_every::I1,
+    n_copies::I1,
     lat_fname::AbstractString="";
     cuda_seed::I2=0,
     nhmc_seed::I3=0
