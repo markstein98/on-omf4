@@ -10,17 +10,17 @@ include("ON_OMF_kernels.jl")
 
 function compute_gradient!(gx2::Array{CompiledKernel}, grad_ker::Array{CompiledKernel})
     # calcola -gradiente (in parallelo) su ogni sito del reticolo e lo mette in gradient
-  CUDA.@sync begin  
-    
-    for i in eachindex(gx2)
-      
-      @inbounds run_kernel(gx2[i])
-      @inbounds run_kernel(grad_ker[i])
-    
-    end 
-     
-  end
-  return nothing
+    CUDA.@sync begin  
+        for i in eachindex(gx2)  
+            @inbounds run_kernel(gx2[i])
+        end
+    end
+    CUDA.@sync begin
+        for i in eachindex(grad_ker)
+            @inbounds run_kernel(grad_ker[i])
+        end 
+    end
+    return nothing
 end
 
 function omf_evolution!(x::CuArray{F, 5}, Pi::CuArray{F, 5}, dt::F, gradient::CuArray{F, 5},
@@ -78,21 +78,21 @@ function compute_energy!(
 
     # sottraggo lo zero modo da x (x = x - zero_modo) e calcolo l'energia media
     CUDA.@sync begin 
-     for i in eachindex(zero_mode)
-      @inbounds run_kernel(zero_mode[i])
-     end 
+        for i in eachindex(zero_mode)
+            @inbounds run_kernel(zero_mode[i])
+        end 
     end 
 
     CUDA.@sync begin
-     for i in eachindex(gx2)
-      @inbounds run_kernel(gx2[i])
-     end 
+        for i in eachindex(gx2)
+            @inbounds run_kernel(gx2[i])
+        end 
     end 
 
     CUDA.@sync begin
-     for i in eachindex(compute_ener)
-      @inbounds run_kernel(compute_ener[i])
-     end
+        for i in eachindex(compute_ener)
+            @inbounds run_kernel(compute_ener[i])
+        end
     end 
     
     CUDA.@sync @inbounds @views energy.= CUDA.sum(CUDA.sum(ener, dims=3), dims=2)[:,1,1,:] ./ (Npoint^2)
@@ -182,10 +182,10 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
     # compilazione dei kernel e creazione di struct con i kernel compilati
 
     for i in eachindex(gx2)
-        @inbounds gx2[i] = compile_kernel(f_gx2, (x[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
-        @inbounds grad_ker[i] = compile_kernel(f_grad, (x[:,:,:,:,1], gradient[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
-        @inbounds zero_mode[i] = compile_kernel(f_zeromode, (x[:,:,:,:,i], zero_modo[:,:,i]), Npoint2)
-        @inbounds compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
+        @inbounds @views gx2[i] = compile_kernel(f_gx2, (x[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
+        @inbounds @views grad_ker[i] = compile_kernel(f_grad, (x[:,:,:,:,1], gradient[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
+        @inbounds @views zero_mode[i] = compile_kernel(f_zeromode, (x[:,:,:,:,i], zero_modo[:,:,i]), Npoint2)
+        @inbounds @views compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
     end
     
     println(now(), ": Initialization and Kernel compilation successfully complete.")
