@@ -33,7 +33,7 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
     scalar_buffs2 = CuArray{F}(undef, n_ptords, Npoint, Npoint, 4)
     fraction = CuArray{F}(undef, n_ptords, Npoint, Npoint)
 
-    # Funcitons returning the coordinates of the nearest neighbour of site (i, k) in the given direction
+    # Functions returning the coordinates of the nearest neighbour of site (i, k) in the given direction
     @inline function neighbour_up(i::I, k::I)
         return (mod(i-I(2), Npoint) + one(I), k)
     end
@@ -58,7 +58,7 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
         return (i, k)
     end
 
-    @inline function mult_doppia!(
+    @inline function multiplication!(
         a::CuDeviceArray{F, 4, 1}, b::CuDeviceArray{F, 4, 1}, result::CuDeviceArray{F, 4, 1},
         i::I, k::I, i2::I, k2::I, n::I, n2::I
         )
@@ -71,14 +71,6 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
                 @inbounds result[j, i, k, n] += a[l, i, k, n] * b[j-l+one(I), i2, k2, n2]
             end
         end
-        return
-    end
-
-    @inline function mult!(
-        a::CuDeviceArray{F, 4, 1}, b::CuDeviceArray{F, 4, 1}, result::CuDeviceArray{F, 4, 1}, i::I, k::I, n::I
-        )
-        # mette a*b in result
-        mult_doppia!(a, b, result, i, k, i, k, n, n)
         return
     end
 
@@ -145,7 +137,7 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
         if (i <= Npoint && k <= Npoint)
             @inbounds gx2[:, i, k] .= zero(F)
             for n::I = 1:n_comps
-                mult!(x, x, vec_buffer, i, k, n)
+                multiplication!(x, x, vec_buffer, i, k, i, k, n, n)
                 @inbounds @views gx2[I(2):n_ptords, i, k] .+= vec_buffer[one(I):max_ptord, i, k, n]
             end
         end
@@ -207,9 +199,9 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
                 #alla fine dovrò comunque dividere per Npoint^2
                 #sulle n_comps sommo perchè tanto è un prodotto scalare
                 #poi c'è un g davanti quindi guardo un j indietro
-                mult_doppia!(x, x, vec_buffer, i, k, right..., n, n)
+                multiplication!(x, x, vec_buffer, i, k, right..., n, n)
                 @inbounds @views ener[I(2):n_ptords,i,k] .+= F(0.5) .* vec_buffer[I(1):max_ptord,i,k,n]
-                mult_doppia!(x, x, vec_buffer, i, k, down..., n, n)
+                multiplication!(x, x, vec_buffer, i, k, down..., n, n)
                 @inbounds @views ener[I(2):n_ptords,i,k] .+= F(0.5) .* vec_buffer[I(1):max_ptord,i,k,n]
             end
 
@@ -226,8 +218,8 @@ function create_kernels(::Type{F}, Npoint::I, max_ptord::I, n_comps::I) where {F
 
             #così troverò i 2 risultati importanti in
             #scalar_buffs[:,i,k,1] e scalar_buffs[:,i,k,3]
-            mult_doppia!(scalar_buffs2, scalar_buffs2, scalar_buffs, i, k, i, k, I(1), I(2))
-            mult_doppia!(scalar_buffs2, scalar_buffs2, scalar_buffs, i, k, i, k, I(3), I(1))
+            multiplication!(scalar_buffs2, scalar_buffs2, scalar_buffs, i, k, i, k, I(1), I(2))
+            multiplication!(scalar_buffs2, scalar_buffs2, scalar_buffs, i, k, i, k, I(3), I(1))
 
             @inbounds @views ener[:,i,k] .+= F(0.5) .* (scalar_buffs[:,i,k,I(1)] .+ scalar_buffs[:,i,k,I(3)])
         end

@@ -19,6 +19,13 @@ function write_line(file::IOStream, array::Vector{T}) where {T}
     println(file)
 end
 
+function get_copy_energy_filename(energy_filename, n_copy)
+    if n_copy < 2
+        return energy_filename
+    end
+    return energy_filename[1:end-4] * "_copy" * string(n_copy) * ".txt"
+end
+
 function build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measure_every)
     folder = "../energies/"
     fname = folder * "O" * string(n_comps+1) * "_Npoint" * string(Npoint)
