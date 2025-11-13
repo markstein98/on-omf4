@@ -17,7 +17,7 @@ else
         --mail-user=$NOTIFICATION_EMAIL
         --mail-type=ALL
     )
-    shift # removes first argument
+    shift # removes first argument ciao 
     cd $JULIA_FOLDER_PATH
     sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $@ # to resume
 fi
