@@ -65,14 +65,7 @@ function compute_energy!(
     compute_ener::Array{CompiledKernel}
     ) where {F <: AbstractFloat, I <: Integer}
     # computes the mean of the energy of all sites at time t
-    #CUDA.@sync begin
-      #for i in eachindex(gx2)
-     
-        #@inbounds @views zero_modo .= CUDA.sum(CUDA.sum(x, dims=3), dims=2)[:,1,1,:,i] ./ (Npoint^2)
-      
-      #end
-    
-    #end
+   
     CUDA.@sync @inbounds @views zero_modo .= CUDA.sum(CUDA.sum(x, dims=3), dims=2)[:,1,1,:,:] ./ (Npoint^2)
     CUDA.fill!(ener, zero(F))
 
@@ -134,7 +127,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
 
     # Initialize additional variables
     x_back = CuArray{F}(undef, n_ords, Npoint, Npoint, n_comps, n_copies)
-    CUDA.copyto!(x_back, x)
+    CUDA.copyto!(x_back, x) # copy x into x_back; 
     args.x = x_back
     Pi = CUDA.zeros(F, n_ords, Npoint, Npoint, n_comps, n_copies)
     gradient = CUDA.zeros(F, n_ords, Npoint, Npoint, n_comps, n_copies)
@@ -183,7 +176,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
 
     for i in eachindex(gx2)
         @inbounds @views gx2[i] = compile_kernel(f_gx2, (x[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
-        @inbounds @views grad_ker[i] = compile_kernel(f_grad, (x[:,:,:,:,1], gradient[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
+        @inbounds @views grad_ker[i] = compile_kernel(f_grad, (x[:,:,:,:,i], gradient[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
         @inbounds @views zero_mode[i] = compile_kernel(f_zeromode, (x[:,:,:,:,i], zero_modo[:,:,i]), Npoint2)
         @inbounds @views compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
     end
@@ -202,6 +195,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         end
         
         compute_energy!(energia, x, ener, zero_modo, Npoint, zero_mode, gx2, compute_ener)
+           
         
         # Store energy measurements if saving lattice
         if save_lattice
@@ -211,7 +205,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         for i in 1:n_copies
             @inbounds @views write_line(mean_energy_files[i], Array(energia[:, i]))
         end
-        x_back .= x
+        x_back .= x # are these two lines needed in order to restart the simulation?? 
         args.iter_start = t + 1
         
         # Check remaining time and save state if needed

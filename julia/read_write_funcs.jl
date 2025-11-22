@@ -160,6 +160,6 @@ mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const measure_every::I
     const cuda_rng::CUDA.RNG
     const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2
+    iter_start::I2 
     x::CuArray{F, 4}
 end
