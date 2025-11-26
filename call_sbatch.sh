@@ -7,6 +7,7 @@ dt=0.05 # size of the stochastic time-step`
 ncomp=14 # number of independent components. The theory simulated will be O(N) with N = ncomp+1
 ptord=10 # maximum perturbative order
 every=7 # number of measures to skip after each measurement
+copies=10 # number of independent lattices to be simulated
 
 source configuration.conf
 
@@ -27,6 +28,6 @@ SBATCH_OPTS=(
     --mail-type=ALL
 )
 
-# sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $npoint $nmeas $NHMC $dt $ncomp $ptord $every # to start
-sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $npoint $nmeas $NHMC $dt $ncomp $ptord $every $lat_fname # to start, with site-per-site energy to be saved
+# sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $npoint $nmeas $NHMC $dt $ncomp $ptord $every $copies # to start
+sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $npoint $nmeas $NHMC $dt $ncomp $ptord $every $copies $lat_fname # to start, with site-per-site energy to be saved
 # sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $resume_fname # to resume

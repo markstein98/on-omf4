@@ -19,6 +19,13 @@ function write_line(file::IOStream, array::Vector{T}) where {T}
     println(file)
 end
 
+function get_copy_energy_filename(energy_filename, n_copy)
+    if n_copy < 2
+        return energy_filename
+    end
+    return energy_filename[1:end-4] * "_copy" * string(n_copy) * ".txt"
+end
+
 function build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measure_every)
     folder = "../energies/"
     fname = folder * "O" * string(n_comps+1) * "_Npoint" * string(Npoint)
@@ -39,7 +46,7 @@ function get_energy_filename(checkpt_fname::AbstractString)
     return fname
 end
 
-function get_lat_checkpoint(lat_fname::AbstractString)
+function get_lat_checkpoint(lat_fname::AbstractString) # TODO: fix '/' bug if '/' is not present in lat_fname
     fname = "../checkpoint" * lat_fname[findlast('/', lat_fname):end] # changes directory
     fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
     return fname
@@ -69,7 +76,9 @@ function get_job_name()
 end
 
 function get_remaining_time(jobid::AbstractString)
-    # return 1000 # REMOVE!!! Only for testing on non-SLURM environments
+    if jobid == ""
+        return 1000 # Only for testing on non-SLURM environments
+    end
     t = read(`squeue -h -j $jobid -o "%L"`, String)
     return get_seconds(t)
 end
@@ -117,25 +126,40 @@ function save_lat(lat_fname::AbstractString, lat)
 end
 
 function remove_files(fnames...)
-    println("Execution successful. Removing checkpoint files:")
+    println(now(), ": Execution successful.")
     for fname in fnames
         if isfile(fname)
             rm(fname)
-            println("Removed ", fname)
+            println("Removed file:", fname)
         end
     end
 end
 
-mutable struct OMF_args
-    const Npoint::Int
-    const n_meas::Int
-    const NHMC::Int
-    const dt::Real
-    const n_comps::Int
-    const max_ptord::Int
-    const measure_every::Int
+mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+    const Npoint::I
+    const n_meas::I
+    const NHMC::I
+    const dt::F
+    const n_comps::I
+    const max_ptord::I
+    const measure_every::I
+    const n_copies::I
     const cuda_rng::CUDA.RNG
     const nhmc_rng::Random.TaskLocalRNG
-    iter_start::Int
-    x::CuArray
+    iter_start::I2
+    x::CuArray{F, 5}
+end
+
+mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+    const Npoint::I
+    const n_meas::I
+    const NHMC::I
+    const dt::F
+    const n_comps::I
+    const max_ptord::I
+    const measure_every::I
+    const cuda_rng::CUDA.RNG
+    const nhmc_rng::Random.TaskLocalRNG
+    iter_start::I2 
+    x::CuArray{F, 4}
 end
