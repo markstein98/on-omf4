@@ -100,6 +100,8 @@ end
 
 function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat_fname::AbstractString="") where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
     
+    print(now(), ": Variables initialization started.")
+
     # Determine if we should save lattice data
     save_lattice = lat_fname != ""
     
@@ -181,7 +183,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         @inbounds @views compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
     end
     
-    println(now(), ": Initialization and Kernel compilation successfully complete.")
+    println(now(), ": Variables initialization and Kernel compilation successfully completed.")
 
     jobid = get_job_id()
 
@@ -211,7 +213,9 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         # Check remaining time and save state if needed
         if get_remaining_time(jobid) < 120
             # 2 min remaining, save state and exit
-            @time save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
+            print(now(), ": Saving status.")
+            save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
+            print(now(), ": Saving status completed.")
             return
         end
     end
@@ -229,6 +233,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         # remove_files(checkpt_fname)
     end
     
+    print(now(), ": Execution successfully terminated.")
     return
 end
 
