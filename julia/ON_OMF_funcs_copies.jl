@@ -211,13 +211,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         # Check remaining time and save state if needed
         if get_remaining_time(jobid) < 120
             # 2 min remaining, save state and exit
-            if save_lattice
-                save_state(checkpt_fname, args, lat_checkpt, ener_meas)
-                execute_self(checkpt_fname, lat_fname)
-            else
-                save_state(checkpt_fname, args)
-                execute_self(checkpt_fname)
-            end
+            @time save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
             return
         end
     end

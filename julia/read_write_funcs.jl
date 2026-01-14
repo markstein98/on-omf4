@@ -135,6 +135,17 @@ function remove_files(fnames...)
     end
 end
 
+function save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
+    if save_lattice
+        save_state(checkpt_fname, args, lat_checkpt, ener_meas)
+        execute_self(checkpt_fname, lat_fname)
+    else
+        save_state(checkpt_fname, args)
+        execute_self(checkpt_fname)
+    end
+    return
+end
+
 mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const Npoint::I
     const n_meas::I
