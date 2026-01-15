@@ -3,7 +3,6 @@ using Random
 using Combinatorics
 using Distributions
 using Serialization
-using Dates
 include("kernel_compilation.jl")
 include("read_write_funcs.jl")
 include("ON_OMF_kernels.jl")
@@ -100,7 +99,7 @@ end
 
 function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat_fname::AbstractString="") where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
     
-    println(now(), ": Variables initialization started.")
+    println(current_time(), "Variables initialization started.")
 
     # Determine if we should save lattice data
     save_lattice = lat_fname != ""
@@ -183,7 +182,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         @inbounds @views compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
     end
     
-    println(now(), ": Variables initialization and Kernel compilation successfully completed.")
+    println(current_time(), "Variables initialization and Kernel compilation successfully completed.")
 
     jobid = get_job_id()
 
@@ -213,9 +212,9 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         # Check remaining time and save state if needed
         if get_remaining_time(jobid) < 120
             # 2 min remaining, save state and exit
-            println(now(), ": Saving status.")
+            println(current_time(), "Saving status.")
             save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
-            println(now(), ": Saving status completed.")
+            println(current_time(), "Saving status completed.")
             return
         end
     end
@@ -223,7 +222,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
     # Final cleanup and file operations
     for i in 1:n_copies
         close(mean_energy_files[i])
-        println("Energy written to file ", en_fnames[i])
+        println(current_time(), "Energy written to file ", en_fnames[i])
     end
     
     if save_lattice
@@ -233,7 +232,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         # remove_files(checkpt_fname)
     end
     
-    println(now(), ": Execution successfully terminated.")
+    println(current_time(), "Execution successfully terminated.")
     return
 end
 

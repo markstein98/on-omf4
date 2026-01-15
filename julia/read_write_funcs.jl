@@ -2,6 +2,11 @@ using Serialization
 using Random
 using CUDA
 using MAT
+using Dates
+
+function current_time()
+    return string(now()) * ": "
+end
 
 function open_energy_file(fname::String, mode::String="w", header::Bool=false)
     file = open(fname, mode)
@@ -89,15 +94,15 @@ end
 
 function save_state(fname::AbstractString, data)
     serialize(fname, data)
-    println("State saved to file \"" * fname * "\"")
+    println(current_time(), "State saved to file \"" * fname * "\"")
     return
 end
 
 function save_state(fname::AbstractString, data, lat_checkpt_fname::AbstractString, lat)
     serialize(fname, data)
-    println("State saved to file \"" * fname * "\"")
+    println(current_time(), "State saved to file \"" * fname * "\"")
     serialize(lat_checkpt_fname, lat)
-    println("Lattice saved to file \"" * lat_checkpt_fname * "\"")
+    println(current_time(), "Lattice saved to file \"" * lat_checkpt_fname * "\"")
     return
 end
 
@@ -105,8 +110,9 @@ function execute_self(fname::AbstractString)
     jname = get_job_name()
     bashfile = "./resume_sbatch.sh"
     command = `$bashfile $jname $fname`
-    println("Re-executing itself with command: ", command)
-    println(read(command, String))
+    exec_time = current_time()
+    println(exec_time, "Re-executing itself with command: ", command)
+    println(" "^length(exec_time), read(command, String))
     return
 end
 
@@ -114,23 +120,24 @@ function execute_self(fname::AbstractString, lat_fname::AbstractString)
     jname = get_job_name()
     bashfile = "./resume_sbatch.sh"
     command = `$bashfile $jname $fname $lat_fname`
-    println("Re-executing itself with command: ", command)
-    println(read(command, String))
+    exec_time = current_time()
+    println(exec_time, "Re-executing itself with command: ", command)
+    println(" "^length(exec_time), read(command, String))
     return
 end
 
 function save_lat(lat_fname::AbstractString, lat)
     matwrite(lat_fname, Dict("energies"=>lat))
-    println("Energy history written to file ", lat_fname)
+    println(current_time(), "Energy history written to file ", lat_fname)
     return
 end
 
 function remove_files(fnames...)
-    println(now(), ": Execution successful.")
+    println(current_time(), "Execution successful.")
     for fname in fnames
         if isfile(fname)
             rm(fname)
-            println("Removed file:", fname)
+            println(current_time(), "Removed file:", fname)
         end
     end
 end
