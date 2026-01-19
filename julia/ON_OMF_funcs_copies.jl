@@ -160,7 +160,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
     else
         mean_energy_files = [open_energy_file(en_fname, "a", false)] # without header, appending
         for i in 2:n_copies
-            push!(mean_energy_files, open_energy_file(en_fnames[i], "a", true))
+            push!(mean_energy_files, open_energy_file(en_fnames[i], "a", false))
         end
         if save_lattice
             ener_meas = deserialize(lat_checkpt)
