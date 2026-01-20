@@ -126,7 +126,7 @@ function execute_self(fname::String, lat_fname::String)
     return
 end
 
-function save_lat(lat_fname::String, lat)
+function save_matlab_energy(lat_fname::String, lat)
     matwrite(lat_fname, Dict("energies"=>lat))
     println(current_time(), "Energy history written to file ", lat_fname)
     return
@@ -156,6 +156,7 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer}
     const en_fname::String
     const config_fname::String
     const checkpt_fname::String
+    const max_saving_time
     iter_start::I
     x::CuArray{F, 5}
     const lat_fname::Union{Nothing, String}
