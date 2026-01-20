@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# != 9 ] && [ $# != 8 ] && [ $# != 2 ] && [ $# != 1 ]; then
-    echo "This script must be called with exactly 1, 2, 8 or 9 arguments."
+if [ $# != 2 ]; then
+    echo "This script must be called with exactly 2 arguments."
     echo "It is intended to be run by \"call_sbatch.sh\" or \"resume_sbatch.sh\""
 else
     source configuration.conf

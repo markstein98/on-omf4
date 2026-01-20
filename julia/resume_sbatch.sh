@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# != 2 ] && [ $# != 3 ]; then
-    echo "This script must be called with exactly 2 or 3 arguments. It was called with $#: $@"
+if [ $# != 2 ]; then
+    echo "This script must be called with exactly 2 arguments. It was called with $#: $@"
     echo "It is intended to be run by the julia program to re-launch itself."
 else
     source ../configuration.conf
@@ -10,7 +10,7 @@ else
         --partition=gpu #here
         --qos=gpu #here
         --gres=gpu:a100_80g:1 #here
-        --mem=40G
+        --mem=80G
         --time=1-0:00:00
         --output=logs/%x_%j.out
         --error=logs/%x_%j.err
@@ -19,5 +19,5 @@ else
     )
     shift # removes first argument
     cd $JULIA_FOLDER_PATH
-    sbatch ${SBATCH_OPTS[@]} job_sbatch.bash $@ # to resume
+    sbatch ${SBATCH_OPTS[@]} job_sbatch.bash load $@ # to resume
 fi
