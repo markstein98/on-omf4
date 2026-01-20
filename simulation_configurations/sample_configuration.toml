@@ -8,9 +8,13 @@ n_indep_comps          =    33  # number of independent components.
 max_perturbative_order =    12  # maximum perturbative order.
                                 # The theory simulated will be up to order g^max_perturbative_order,
                                 # neglecting results of order g^(max_perturbative_order+1) or greater
+energy_filename        = "energies/energy.dat"        # path to energy filename
+checkpoint_filename    = "checkpoint/checkpoint.jld"  # path to checkpoint filename (only for first execution)
 
 # Optional parameters
 measure_every              =          7  # number of measurements to skip between two saved measures. Default = 1
 n_copies                   =         10  # number of lattice copies to be simulated in parallel. Default = 1
-energy_site_by_site_matlab = "file.mat"  # name of the matlab file to save the energy site-by-site. Default = ""
+energy_site_by_site_matlab = "file.mat"  # name of the matlab file to save the energy site-by-site. Default = nothing
 max_saving_time            =        600  # time, in seconds, allocated to state saving before exiting. Default = 10 min
+# cuda_seed                =          0  # seed for the cuda rng. Default = nothing (random)
+# cpu_rng_seed             =          0  # seed for the cpu rng. Default = nothing (random)
