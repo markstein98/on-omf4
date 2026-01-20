@@ -251,7 +251,7 @@ function launch_main_omf(config_fname::String)
     return
 end
 
-function launch_main_omf(config_fname::String, checkpt_fname::String)
+function resume_main_omf(checkpt_fname::String)
     # Resumes execution
     if !isfile(checkpt_fname)
         error("Checkpoint file $checkpt_fname not found.")
@@ -259,10 +259,7 @@ function launch_main_omf(config_fname::String, checkpt_fname::String)
     end
     println(current_time(), "Checkpoint file found. Resuming execution...")
     # Load config file
-    conf = parse_config_file(config_fname)
-    checkpt = deserialize(checkpt_fname)
-    # TODO: continue here
-    args = OMF_args_copies()
+    args = deserialize(checkpt_fname)
     main_omf(args)
     return
 end
