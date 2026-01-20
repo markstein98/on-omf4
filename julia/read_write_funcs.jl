@@ -39,25 +39,25 @@ function build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measur
     return fname
 end
 
-function get_checkpoint_filename(energy_fname::AbstractString)
+function get_checkpoint_filename(energy_fname::String)
     fname = "../checkpoint" * energy_fname[findlast('/', energy_fname):end] # changes directory
     fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
     return fname
 end
 
-function get_energy_filename(checkpt_fname::AbstractString)
+function get_energy_filename(checkpt_fname::String)
     fname = "../energies" * checkpt_fname[findlast('/', checkpt_fname):end] # changes directory
     fname = fname[1:findlast('.', fname)] * "txt" # changes the extension
     return fname
 end
 
-function get_lat_checkpoint(lat_fname::AbstractString) # TODO: fix '/' bug if '/' is not present in lat_fname
+function get_lat_checkpoint(lat_fname::String) # TODO: fix '/' bug if '/' is not present in lat_fname
     fname = "../checkpoint" * lat_fname[findlast('/', lat_fname):end] # changes directory
     fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
     return fname
 end
 
-function get_seconds(time::AbstractString)
+function get_seconds(time::String)
     seconds = 0
     sep = findfirst('-', time)
     if !(sep === nothing)
@@ -80,7 +80,7 @@ function get_job_name()
     return get(ENV, "SLURM_JOB_NAME", "")
 end
 
-function get_remaining_time(jobid::AbstractString)
+function get_remaining_time(jobid::String)
     if jobid == ""
         return 1000 # Only for testing on non-SLURM environments
     end
@@ -92,13 +92,13 @@ function get_remaining_time()
     return get_remaining_time(get_job_id())
 end
 
-function save_state(fname::AbstractString, data)
+function save_state(fname::String, data)
     serialize(fname, data)
     println(current_time(), "State saved to file \"" * fname * "\"")
     return
 end
 
-function save_state(fname::AbstractString, data, lat_checkpt_fname::AbstractString, lat)
+function save_state(fname::String, data, lat_checkpt_fname::String, lat)
     serialize(fname, data)
     println(current_time(), "State saved to file \"" * fname * "\"")
     serialize(lat_checkpt_fname, lat)
@@ -106,7 +106,7 @@ function save_state(fname::AbstractString, data, lat_checkpt_fname::AbstractStri
     return
 end
 
-function execute_self(fname::AbstractString)
+function execute_self(fname::String)
     jname = get_job_name()
     bashfile = "./resume_sbatch.sh"
     command = `$bashfile $jname $fname`
@@ -116,7 +116,7 @@ function execute_self(fname::AbstractString)
     return
 end
 
-function execute_self(fname::AbstractString, lat_fname::AbstractString)
+function execute_self(fname::String, lat_fname::String)
     jname = get_job_name()
     bashfile = "./resume_sbatch.sh"
     command = `$bashfile $jname $fname $lat_fname`
@@ -126,7 +126,7 @@ function execute_self(fname::AbstractString, lat_fname::AbstractString)
     return
 end
 
-function save_lat(lat_fname::AbstractString, lat)
+function save_lat(lat_fname::String, lat)
     matwrite(lat_fname, Dict("energies"=>lat))
     println(current_time(), "Energy history written to file ", lat_fname)
     return
@@ -142,18 +142,7 @@ function remove_files(fnames...)
     end
 end
 
-function save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
-    if save_lattice
-        save_state(checkpt_fname, args, lat_checkpt, ener_meas)
-        execute_self(checkpt_fname, lat_fname)
-    else
-        save_state(checkpt_fname, args)
-        execute_self(checkpt_fname)
-    end
-    return
-end
-
-mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer}
     const Npoint::I
     const n_meas::I
     const NHMC::I
@@ -164,8 +153,22 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const n_copies::I
     const cuda_rng::CUDA.RNG
     const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2
+    const en_fname::String
+    const config_fname::String
+    const checkpt_fname::String
+    iter_start::I
     x::CuArray{F, 5}
+    const lat_fname::Union{Nothing, String}
+    ener_meas::Union{Nothing, CuArray{F, 5}}
+    # OMF_args_copies{F <: AbstractFloat, I <: Integer}(
+    #     Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I, measure_every::I, n_copies::I,
+    #     cuda_rng::CUDA.RNG, nhmc_rng::Random.TaskLocalRNG,
+    #     en_fname::String, config_fname::String, iter_start::I, x::CuArray{F, 5},
+    #     lat_fname::Union{Nothing, String} = nothing, ener_meas::Union{Nothing, CuArray{F, 5}} = nothing
+    # ) = new(
+    #     Npoint, n_meas, NHMC, dt, n_comps, max_ptord, measure_every, n_copies, cuda_rng, nhmc_rng,
+    #     en_fname, config_fname, iter_start, x, lat_fname, ener_meas
+    # )
 end
 
 mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
@@ -178,6 +181,34 @@ mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const measure_every::I
     const cuda_rng::CUDA.RNG
     const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2 
+    iter_start::I2
     x::CuArray{F, 4}
 end
+
+# Constructor to automatically match integer type to float type
+# function OMF_args_copies{F}(
+#     Npoint, n_meas, NHMC, dt::F, n_comps, max_ptord, measure_every, n_copies,
+#     cuda_rng, nhmc_rng, en_fname, config_fname, lat_fname,
+#     iter_start, x, ener_meas
+# ) where {F <: AbstractFloat}
+#     I = F == Float32 ? Int32 : Int64
+    
+#     return OMF_args_copies{F, I}(
+#         I(Npoint), 
+#         I(n_meas), 
+#         I(NHMC), 
+#         dt, 
+#         I(n_comps), 
+#         I(max_ptord), 
+#         I(measure_every), 
+#         I(n_copies),
+#         cuda_rng, 
+#         nhmc_rng, 
+#         en_fname, 
+#         config_fname, 
+#         lat_fname,
+#         I(iter_start), 
+#         x, 
+#         ener_meas
+#     )
+# end
