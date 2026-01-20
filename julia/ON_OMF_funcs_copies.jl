@@ -6,6 +6,7 @@ using Serialization
 include("kernel_compilation.jl")
 include("read_write_funcs.jl")
 include("ON_OMF_kernels.jl")
+include("load_config.jl")
 
 function compute_gradient!(gx2::Array{CompiledKernel}, grad_ker::Array{CompiledKernel})
     # calcola -gradiente (in parallelo) su ogni sito del reticolo e lo mette in gradient
@@ -97,7 +98,7 @@ end
     return nothing
 end
 
-function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat_fname::AbstractString="") where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
+function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: Integer}
     
     println(current_time(), "Variables initialization started.")
 
@@ -160,7 +161,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
     else
         mean_energy_files = [open_energy_file(en_fname, "a", false)] # without header, appending
         for i in 2:n_copies
-            push!(mean_energy_files, open_energy_file(en_fnames[i], "a", true))
+            push!(mean_energy_files, open_energy_file(en_fnames[i], "a", false))
         end
         if save_lattice
             ener_meas = deserialize(lat_checkpt)
@@ -213,7 +214,14 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         if get_remaining_time(jobid) < 600
             # 10 min remaining, save state and exit
             println(current_time(), "Saving status.")
-            save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
+            save_data = Dict("args" => args, "en_fname" => en_fname)
+            if save_lattice
+                save_data["lat_fname"] = lat_fname
+                save_data["ener_meas"] = ener_meas
+            end
+            save_state(checkpt_fname, save_data)
+            execute_self(checkpt_fname)
+            # Serialize a dictionary in checkpt fname, with args and useful filenames. Re execute only with checkpt fname
             println(current_time(), "Saving status completed.")
             return
         end
@@ -224,78 +232,45 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         close(mean_energy_files[i])
         println(current_time(), "Energy written to file ", en_fnames[i])
     end
-    
-    if save_lattice
-        save_lat(lat_fname, Array(ener_meas))
-        # remove_files(checkpt_fname, lat_checkpt)
-    else
-        # remove_files(checkpt_fname)
-    end
-    
-    println(current_time(), "Execution successfully terminated.")
     return
 end
 
-function launch_main_omf(
-    Npoint::I1,
-    n_meas::I1,
-    NHMC::I1,
-    dt::F,
-    n_comps::I1,
-    max_ptord::I1,
-    measure_every::I1,
-    n_copies::I1,
-    lat_fname::AbstractString="";
-    cuda_seed::I2=0,
-    nhmc_seed::I3=0
-    ) where {F <: AbstractFloat, I1 <: Integer, I2 <: Integer, I3 <: Integer}
-    en_fname = build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measure_every)
-    checkpt_fname = get_checkpoint_filename(en_fname)
-    println("Received simulation infos. Trying to see if there is already some data...")
-    if isfile(checkpt_fname) && isfile(en_fname) && (lat_fname == "" || isfile(get_lat_checkpoint(lat_fname)))
-        # Resume execution
-        launch_main_omf(checkpt_fname, lat_fname)
-        return
-    end
+function launch_main_omf(config_fname::String)
     # Starts from scratch
-    println("Some file with previous data was not found. Starting anew...")
-    cuda_rng = cuda_seed == 0 ? CUDA.RNG() : CUDA.RNG(cuda_seed)
+    println(current_time(), "Starting new simulation...")
+    # Load config file
+    conf = parse_config_file(config_fname)
+    # Setting specific rng seeds, if provided
+    cuda_rng = conf.cuda_seed == 0 ? CUDA.RNG() : CUDA.RNG(conf.cuda_seed)
     nhmc_rng = Random.default_rng()
-    nhmc_seed != 0 && Random.seed!(nhmc_rng, nhmc_seed)
-    args = OMF_args_copies(Npoint, n_meas, NHMC, dt, n_comps, max_ptord, measure_every, n_copies, cuda_rng, nhmc_rng,
-                    1, CUDA.zeros(F, max_ptord+1, Npoint, Npoint, n_comps, n_copies))
-    if lat_fname == ""
-        main_omf(args, en_fname)
-    else
-        main_omf(args, en_fname, lat_fname)
-    end
+    conf.cpu_rng_seed != 0 && Random.seed!(nhmc_rng, conf.cpu_rng_seed)
+    floatType = typeof(conf.dt)
+    n_ords = conf.max_ptord + one(conf.max_ptord)
+    Npoint = conf.Npoint
+    n_copies = conf.n_copies
+    args = OMF_args_copies(
+        Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every,
+        n_copies, cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, one(conf.Npoint),
+        CUDA.zeros(floatType, n_ords, Npoint, Npoint, conf.n_comps, n_copies),
+        conf.lat_file,
+        conf.lat_file != nothing ? CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies, conf.n_meas) : nothing
+    )
+    main_omf(args)
     return
 end
 
-function launch_main_omf(checkpt_fname::AbstractString, lat_fname::AbstractString="")
+function launch_main_omf(config_fname::String, checkpt_fname::String)
     # Resumes execution
     if !isfile(checkpt_fname)
-        println("Error: file $checkpt_fname not found. Exiting")
+        error("Checkpoint file $checkpt_fname not found.")
         return
     end
-    en_fname = get_energy_filename(checkpt_fname)
-    if !isfile(en_fname)
-        println("Error: file $en_fname not found. Exiting")
-        return
-    end
-    if lat_fname != ""
-        lat_checkpt = get_lat_checkpoint(lat_fname)
-        if !isfile(lat_checkpt)
-            println("Error: file $lat_checkpt not found. Exiting")
-            return
-        end
-    end
-    println("Found necessary files. Resuming execution...")
-    args = deserialize(checkpt_fname)
-    if lat_fname == ""
-        main_omf(args, en_fname)
-    else
-        main_omf(args, en_fname, lat_fname)
-    end
+    println(current_time(), "Checkpoint file found. Resuming execution...")
+    # Load config file
+    conf = parse_config_file(config_fname)
+    checkpt = deserialize(checkpt_fname)
+    # TODO: continue here
+    args = OMF_args_copies()
+    main_omf(args)
     return
 end
