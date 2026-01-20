@@ -102,30 +102,30 @@ function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: I
     
     println(current_time(), "Variables initialization started.")
 
-    # Determine if we should save lattice data
-    save_lattice = lat_fname != ""
-    
     # Extract (almost) all the arguments
-    Npoint = args.Npoint
-    n_meas = args.n_meas
-    NHMC = args.NHMC
-    dt = args.dt
-    n_comps = args.n_comps
-    n_copies = args.n_copies
-    max_ptord = args.max_ptord
+    Npoint        = args.Npoint
+    n_meas        = args.n_meas
+    NHMC          = args.NHMC
+    dt            = args.dt
+    n_comps       = args.n_comps
+    n_copies      = args.n_copies
+    max_ptord     = args.max_ptord
     measure_every = args.measure_every
-    x = args.x
-    cuda_rng = args.cuda_rng
-    nhmc_rng = args.nhmc_rng
-    
-    # Setup checkpoint filenames
-    checkpt_fname = get_checkpoint_filename(en_fname)
-    if save_lattice
-        lat_checkpt = get_lat_checkpoint(lat_fname)
-    end
+    x             = args.x
+    cuda_rng      = args.cuda_rng
+    nhmc_rng      = args.nhmc_rng
+    en_fname      = args.en_fname
+    checkpt_fname = args.checkpt_fname
 
+    # Determine if we should save lattice data
+    save_lattice = args.lat_fname != nothing
+    if save_lattice
+        lat_fname::String = args.lat_fname
+        ener_meas::CuArray{F, 5} = args.ener_meas
+    end
+    
     n_ords = max_ptord + one(max_ptord)
-    Npoint2 = Npoint^2
+    Npoint2 = Npoint ^ 2
 
     # Initialize additional variables
     x_back = CuArray{F}(undef, n_ords, Npoint, Npoint, n_comps, n_copies)
@@ -155,27 +155,20 @@ function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: I
         for i in 2:n_copies
             push!(mean_energy_files, open_energy_file(en_fnames[i], "w", true))
         end
-        if save_lattice
-            ener_meas = CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies, n_meas)
-        end
     else
         mean_energy_files = [open_energy_file(en_fname, "a", false)] # without header, appending
         for i in 2:n_copies
             push!(mean_energy_files, open_energy_file(en_fnames[i], "a", false))
         end
-        if save_lattice
-            ener_meas = deserialize(lat_checkpt)
-        end
     end
 
-    # randomizzazione di NHMC
+    # randomization of NHMC
     binom_distr = Binomial(NHMC*10,1/10)
 
-    # creazione delle funzioni a parametri fissati
+    # creation of fixed-parameters functions
     f_gx2, f_grad, f_zeromode, f_ener = create_kernels(F, Npoint, max_ptord, n_comps)
 
-    # compilazione dei kernel e creazione di struct con i kernel compilati
-
+    # kernel compilation and compiled-kernel structs creation
     for i in eachindex(gx2)
         @inbounds @views gx2[i] = compile_kernel(f_gx2, (x[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
         @inbounds @views grad_ker[i] = compile_kernel(f_grad, (x[:,:,:,:,i], gradient[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
@@ -197,7 +190,6 @@ function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: I
         end
         
         compute_energy!(energia, x, ener, zero_modo, Npoint, zero_mode, gx2, compute_ener)
-           
         
         # Store energy measurements if saving lattice
         if save_lattice
@@ -207,22 +199,16 @@ function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: I
         for i in 1:n_copies
             @inbounds @views write_line(mean_energy_files[i], Array(energia[:, i]))
         end
-        x_back .= x # are these two lines needed in order to restart the simulation?? 
+        x_back .= x
         args.iter_start = t + 1
         
         # Check remaining time and save state if needed
-        if get_remaining_time(jobid) < 600
-            # 10 min remaining, save state and exit
+        if get_remaining_time(jobid) < args.max_saving_time
+            # time's almost up, save state and exit
             println(current_time(), "Saving status.")
-            save_data = Dict("args" => args, "en_fname" => en_fname)
-            if save_lattice
-                save_data["lat_fname"] = lat_fname
-                save_data["ener_meas"] = ener_meas
-            end
-            save_state(checkpt_fname, save_data)
-            execute_self(checkpt_fname)
-            # Serialize a dictionary in checkpt fname, with args and useful filenames. Re execute only with checkpt fname
+            save_state(checkpt_fname, args)         
             println(current_time(), "Saving status completed.")
+            execute_self(checkpt_fname)
             return
         end
     end
@@ -230,8 +216,14 @@ function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: I
     # Final cleanup and file operations
     for i in 1:n_copies
         close(mean_energy_files[i])
-        println(current_time(), "Energy written to file ", en_fnames[i])
+        print(current_time(), "Mean energy ")
+        n_copies > 1 && print("of copy $i ")
+        println("written to file: ", en_fnames[i])
     end
+
+    # Saving energy site-by-site on matlab file
+    save_lattice && save_matlab_energy(lat_fname, Array(ener_meas))
+    println(current_time(), "Execution successfully terminated.")
     return
 end
 
@@ -249,8 +241,8 @@ function launch_main_omf(config_fname::String)
     Npoint = conf.Npoint
     n_copies = conf.n_copies
     args = OMF_args_copies(
-        Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every,
-        n_copies, cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, one(conf.Npoint),
+        Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every, n_copies,
+        cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
         CUDA.zeros(floatType, n_ords, Npoint, Npoint, conf.n_comps, n_copies),
         conf.lat_file,
         conf.lat_file != nothing ? CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies, conf.n_meas) : nothing
