@@ -56,8 +56,9 @@ end
 
 function get_remaining_time(jobid::String)
     if jobid == "" # Only for testing on non-SLURM environments
-        if isfile("remaining_time.txt")
-            f = open("remaining_time.txt")
+        fname = "remaining_time.txt"
+        if isfile(fname)
+            f = open(fname)
             t = tryparse(Int, readline(f))
             close(f)
             t !== nothing && return t
