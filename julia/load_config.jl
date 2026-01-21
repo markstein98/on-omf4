@@ -31,9 +31,18 @@ function check_required_keys(config_fname, check_chkpt_fname=true)
     return
 end
 
-function parse_config_file(fname, checkpt_fname=nothing; floatType=Float32, intType=Int32)
-    # TODO: implement floatType and intType as optional fields
+function parse_config_file(fname, checkpt_fname=nothing)
     cfg = TOML.parsefile(fname)
+
+    # get number of bits for ints and floats from config file, if they exist
+    intBits = get(cfg, "intBits", "32")
+    floatBits = get(cfg, "floatBits", "32")
+    if intBits != floatBits
+        println("[WARNING]: GPU int variables will be $intBits bits, while float variables will be $floatBits bits.")
+        println("           This can cause performance issues.")
+    end
+    intType = intBits == "64" ? Int64 : Int32
+    floatType = floatBits == "64" ? Float64 : Float32
 
     # Mandatory fields
     Npoint            = intType(cfg["n_side_sites"])

@@ -18,3 +18,6 @@ energy_site_by_site_matlab = "file.mat"  # name of the matlab file to save the e
 max_saving_time            =        600  # time, in seconds, allocated to state saving before exiting. Default = 10 min
 # cuda_seed                =          0  # seed for the cuda rng. Default = nothing (random)
 # cpu_rng_seed             =          0  # seed for the cpu rng. Default = nothing (random)
+# intBits   = 32  # Either 32 (for   Int32 variables on GPU) or 64 (for   Int64 variables on GPU). Default = 32
+# floatBits = 32  # Either 32 (for Float32 variables on GPU) or 64 (for Float64 variables on GPU). Default = 32
+    # If intBits != floatBits the program will output a warning, as there will be performance issues
