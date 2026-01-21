@@ -72,14 +72,6 @@ function save_state(fname::String, data)
     return
 end
 
-function save_state(fname::String, data, lat_checkpt_fname::String, lat)
-    serialize(fname, data)
-    println(current_time(), "State saved to file \"" * fname * "\"")
-    serialize(lat_checkpt_fname, lat)
-    println(current_time(), "Lattice saved to file \"" * lat_checkpt_fname * "\"")
-    return
-end
-
 function execute_self(fname::String)
     jname = get_job_name()
     bashfile = "./resume_sbatch.sh"
