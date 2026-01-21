@@ -236,7 +236,8 @@ function launch_main_omf(config_fname::String)
     check_required_keys(args[2], true)
     curr_time = current_time()
     println(curr_time, "Configuration file found.")
-    println(" "^length(curr_time), "Configuration file: ", config_fname)
+    curr_time = " "^(length(curr_time)-length("[INFO]: ")) * "[INFO]: "
+    println(curr_time, "Configuration file: ", config_fname)
     # Load config file
     conf = parse_config_file(config_fname)
     # checking writeability of checkpoint and energy filenames
@@ -260,9 +261,9 @@ function launch_main_omf(config_fname::String)
         conf.lat_file,
         conf.lat_file == nothing ? nothing : CUDA.zeros(F, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas)
     )
-    println(" "^length(curr_time), "Checkpoint file: ", args.checkpt_fname)
-    println(" "^length(curr_time), "Energy file: ", args.en_fname)
-    println(" "^length(curr_time), "Starting new simulation...")
+    println(curr_time, "Checkpoint file: ", args.checkpt_fname)
+    println(curr_time, "Energy file: ", args.en_fname)
+    println(curr_time, "Starting new simulation...")
     main_omf(args)
     return
 end
@@ -277,10 +278,11 @@ function resume_main_omf(checkpt_fname::String)
     args = deserialize(checkpt_fname)
     curr_time = current_time()
     println(curr_time, "Checkpoint file found.")
-    println(" "^length(curr_time), "Configuration file: ", args.config_fname, " (could be outdated).")
-    println(" "^length(curr_time), "Checkpoint file: ", checkpt_fname)
-    println(" "^length(curr_time), "Energy file: ", args.en_fname)
-    println(" "^length(curr_time), "Resuming execution...")
+    curr_time = " "^(length(curr_time)-length("[INFO]: ")) * "[INFO]: "
+    println(curr_time, "Configuration file: ", args.config_fname, " (could be outdated).")
+    println(curr_time, "Checkpoint file: ", checkpt_fname)
+    println(curr_time, "Energy file: ", args.en_fname)
+    println(curr_time, "Resuming execution...")
     main_omf(args)
     return
 end
