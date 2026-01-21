@@ -8,7 +8,7 @@ n_indep_comps          =    33  # number of independent components.
 max_perturbative_order =    12  # maximum perturbative order.
                                 # The theory simulated will be up to order g^max_perturbative_order,
                                 # neglecting results of order g^(max_perturbative_order+1) or greater
-energy_filename        = "energies/energy.dat"        # path to energy filename
+energy_filename        = "energies/energy.txt"        # path to energy filename
 checkpoint_filename    = "checkpoint/checkpoint.jld"  # path to checkpoint filename (only for first execution)
 
 # Optional parameters
