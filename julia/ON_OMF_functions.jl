@@ -98,7 +98,7 @@ end
     return nothing
 end
 
-function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: Integer}
+function main_omf(args::OMF_args_copies{F, I, I2}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
     
     println(current_time(), "Variables initialization started.")
 
