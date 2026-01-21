@@ -118,7 +118,7 @@ function main_omf(args::OMF_args_copies{F, I}) where {F <: AbstractFloat, I <: I
     checkpt_fname = args.checkpt_fname
 
     # Determine if we should save lattice data
-    save_lattice = args.lat_fname != nothing
+    save_lattice = args.lat_fname !== nothing
     if save_lattice
         lat_fname::String = args.lat_fname
         ener_meas::CuArray{F, 5} = args.ener_meas
@@ -229,23 +229,33 @@ end
 
 function launch_main_omf(config_fname::String)
     # Starts from scratch
-    println(current_time(), "Starting new simulation...")
+    # Checking if configuration file exists and has all the mandatory parameters
+    if !isfile(args[2])
+        error("Configuration file not found: ", args[1])
+    end
+    check_required_keys(args[2], true)
+    println(current_time(), "Configuration file found. Starting new simulation...")
     # Load config file
     conf = parse_config_file(config_fname)
+    # checking writeability of checkpoint and energy filenames
+    if !is_file_writeable(conf.checkpt_fname)
+        error("Checkpoint file ", conf.checkpt_fname, " is not writeable.")
+    end
+    if !is_file_writeable(conf.en_fname)
+        error("Energy file ", conf.en_fname, " is not writeable.")
+    end
     # Setting specific rng seeds, if provided
     cuda_rng = conf.cuda_seed == 0 ? CUDA.RNG() : CUDA.RNG(conf.cuda_seed)
     nhmc_rng = Random.default_rng()
     conf.cpu_rng_seed != 0 && Random.seed!(nhmc_rng, conf.cpu_rng_seed)
     floatType = typeof(conf.dt)
     n_ords = conf.max_ptord + one(conf.max_ptord)
-    Npoint = conf.Npoint
-    n_copies = conf.n_copies
     args = OMF_args_copies(
-        Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every, n_copies,
+        conf.Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every, conf.n_copies,
         cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
-        CUDA.zeros(floatType, n_ords, Npoint, Npoint, conf.n_comps, n_copies),
+        CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_comps, conf.n_copies),
         conf.lat_file,
-        conf.lat_file != nothing ? CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies, conf.n_meas) : nothing
+        conf.lat_file !== nothing ? CUDA.zeros(F, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas) : nothing
     )
     main_omf(args)
     return
