@@ -142,7 +142,7 @@ function remove_files(fnames...)
     end
 end
 
-mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer}
+mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const Npoint::I
     const n_meas::I
     const NHMC::I
@@ -156,7 +156,7 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer}
     const en_fname::String
     const config_fname::String
     const checkpt_fname::String
-    const max_saving_time
+    const max_saving_time::I2
     iter_start::I
     x::CuArray{F, 5}
     const lat_fname::Union{Nothing, String}
