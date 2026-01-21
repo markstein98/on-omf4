@@ -99,7 +99,9 @@ end
 end
 
 function main_omf(args::OMF_args_copies{F, I, I2}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
-    
+
+    # Print some logging information
+    println(get_infos_string(args; header="[Simulation Infos]: ", prepend="\n", append="\n"))
     println(current_time(), "Variables initialization started.")
 
     # Extract (almost) all the arguments
@@ -176,7 +178,8 @@ function main_omf(args::OMF_args_copies{F, I, I2}) where {F <: AbstractFloat, I 
         @inbounds @views compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
     end
     
-    println(current_time(), "Variables initialization and Kernel compilation successfully completed.")
+    print(current_time(), "Variables initialization and Kernel compilation successfully completed. ")
+    println("Simulation is starting...")
 
     jobid = get_job_id()
 
@@ -223,7 +226,7 @@ function main_omf(args::OMF_args_copies{F, I, I2}) where {F <: AbstractFloat, I 
 
     # Saving energy site-by-site on matlab file
     save_lattice && save_matlab_energy(lat_fname, Array(ener_meas))
-    println(current_time(), "Execution successfully terminated.")
+    println(current_time(), "All measurements successfully taken.")
     return
 end
 
@@ -259,7 +262,7 @@ function launch_main_omf(config_fname::String)
         cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
         CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_comps, conf.n_copies),
         conf.lat_file,
-        conf.lat_file == nothing ? nothing : CUDA.zeros(F, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas)
+        conf.lat_file == nothing ? nothing : CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas)
     )
     println(curr_time, "Checkpoint file: ", args.checkpt_fname)
     println(curr_time, "Energy file: ", args.en_fname)
