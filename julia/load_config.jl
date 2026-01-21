@@ -63,9 +63,7 @@ function parse_config_file(fname, checkpt_fname=nothing)
     n_copies          = intType(get(cfg, "n_copies", 1))
     if haskey(cfg, "energy_site_by_site_matlab")
         lat_file      = cfg["energy_site_by_site_matlab"]
-        if !is_file_writeable(lat_file)
-            error("Energy site-by-site file ", lat_file, " is not writeable")
-        end
+        is_file_writeable(lat_file) || error("Energy site-by-site file ", lat_file, " is not writeable")
     else
         lat_file = nothing
     end
