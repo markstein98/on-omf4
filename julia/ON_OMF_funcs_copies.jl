@@ -234,7 +234,9 @@ function launch_main_omf(config_fname::String)
         error("Configuration file not found: ", args[1])
     end
     check_required_keys(args[2], true)
-    println(current_time(), "Configuration file found. Starting new simulation...")
+    curr_time = current_time()
+    println(curr_time, "Configuration file found.")
+    println(" "^length(curr_time), "Configuration file: ", config_fname)
     # Load config file
     conf = parse_config_file(config_fname)
     # checking writeability of checkpoint and energy filenames
@@ -248,6 +250,7 @@ function launch_main_omf(config_fname::String)
     cuda_rng = conf.cuda_seed == 0 ? CUDA.RNG() : CUDA.RNG(conf.cuda_seed)
     nhmc_rng = Random.default_rng()
     conf.cpu_rng_seed != 0 && Random.seed!(nhmc_rng, conf.cpu_rng_seed)
+    # Arguments initialization
     floatType = typeof(conf.dt)
     n_ords = conf.max_ptord + one(conf.max_ptord)
     args = OMF_args_copies(
@@ -255,8 +258,11 @@ function launch_main_omf(config_fname::String)
         cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
         CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_comps, conf.n_copies),
         conf.lat_file,
-        conf.lat_file !== nothing ? CUDA.zeros(F, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas) : nothing
+        conf.lat_file == nothing ? nothing : CUDA.zeros(F, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas)
     )
+    println(" "^length(curr_time), "Checkpoint file: ", args.checkpt_fname)
+    println(" "^length(curr_time), "Energy file: ", args.en_fname)
+    println(" "^length(curr_time), "Starting new simulation...")
     main_omf(args)
     return
 end
@@ -267,9 +273,14 @@ function resume_main_omf(checkpt_fname::String)
         error("Checkpoint file $checkpt_fname not found.")
         return
     end
-    println(current_time(), "Checkpoint file found. Resuming execution...")
     # Load config file
     args = deserialize(checkpt_fname)
+    curr_time = current_time()
+    println(curr_time, "Checkpoint file found.")
+    println(" "^length(curr_time), "Configuration file: ", args.config_fname, " (could be outdated).")
+    println(" "^length(curr_time), "Checkpoint file: ", checkpt_fname)
+    println(" "^length(curr_time), "Energy file: ", args.en_fname)
+    println(" "^length(curr_time), "Resuming execution...")
     main_omf(args)
     return
 end
