@@ -31,32 +31,6 @@ function get_copy_energy_filename(energy_filename, n_copy)
     return energy_filename[1:end-4] * "_copy" * string(n_copy) * ".txt"
 end
 
-function build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measure_every)
-    folder = "../energies/"
-    fname = folder * "O" * string(n_comps+1) * "_Npoint" * string(Npoint)
-    fname *= "_dt" * string(dt) * "_ord" * string(max_ptord) * "_NHMC" * string(NHMC)
-    fname *= "_nMeas" * string(n_meas) * "_every" * string(measure_every) * ".txt"
-    return fname
-end
-
-function get_checkpoint_filename(energy_fname::String)
-    fname = "../checkpoint" * energy_fname[findlast('/', energy_fname):end] # changes directory
-    fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
-    return fname
-end
-
-function get_energy_filename(checkpt_fname::String)
-    fname = "../energies" * checkpt_fname[findlast('/', checkpt_fname):end] # changes directory
-    fname = fname[1:findlast('.', fname)] * "txt" # changes the extension
-    return fname
-end
-
-function get_lat_checkpoint(lat_fname::String) # TODO: fix '/' bug if '/' is not present in lat_fname
-    fname = "../checkpoint" * lat_fname[findlast('/', lat_fname):end] # changes directory
-    fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
-    return fname
-end
-
 function get_seconds(time::String)
     seconds = 0
     sep = findfirst('-', time)
@@ -116,30 +90,10 @@ function execute_self(fname::String)
     return
 end
 
-function execute_self(fname::String, lat_fname::String)
-    jname = get_job_name()
-    bashfile = "./resume_sbatch.sh"
-    command = `$bashfile $jname $fname $lat_fname`
-    exec_time = current_time()
-    println(exec_time, "Re-executing itself with command: ", command)
-    println(" "^length(exec_time), read(command, String))
-    return
-end
-
 function save_matlab_energy(lat_fname::String, lat)
     matwrite(lat_fname, Dict("energies"=>lat))
     println(current_time(), "Energy history written to file ", lat_fname)
     return
-end
-
-function remove_files(fnames...)
-    println(current_time(), "Execution successful.")
-    for fname in fnames
-        if isfile(fname)
-            rm(fname)
-            println(current_time(), "Removed file:", fname)
-        end
-    end
 end
 
 mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
@@ -161,55 +115,4 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     x::CuArray{F, 5}
     const lat_fname::Union{Nothing, String}
     ener_meas::Union{Nothing, CuArray{F, 5}}
-    # OMF_args_copies{F <: AbstractFloat, I <: Integer}(
-    #     Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I, measure_every::I, n_copies::I,
-    #     cuda_rng::CUDA.RNG, nhmc_rng::Random.TaskLocalRNG,
-    #     en_fname::String, config_fname::String, iter_start::I, x::CuArray{F, 5},
-    #     lat_fname::Union{Nothing, String} = nothing, ener_meas::Union{Nothing, CuArray{F, 5}} = nothing
-    # ) = new(
-    #     Npoint, n_meas, NHMC, dt, n_comps, max_ptord, measure_every, n_copies, cuda_rng, nhmc_rng,
-    #     en_fname, config_fname, iter_start, x, lat_fname, ener_meas
-    # )
 end
-
-mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
-    const Npoint::I
-    const n_meas::I
-    const NHMC::I
-    const dt::F
-    const n_comps::I
-    const max_ptord::I
-    const measure_every::I
-    const cuda_rng::CUDA.RNG
-    const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2
-    x::CuArray{F, 4}
-end
-
-# Constructor to automatically match integer type to float type
-# function OMF_args_copies{F}(
-#     Npoint, n_meas, NHMC, dt::F, n_comps, max_ptord, measure_every, n_copies,
-#     cuda_rng, nhmc_rng, en_fname, config_fname, lat_fname,
-#     iter_start, x, ener_meas
-# ) where {F <: AbstractFloat}
-#     I = F == Float32 ? Int32 : Int64
-    
-#     return OMF_args_copies{F, I}(
-#         I(Npoint), 
-#         I(n_meas), 
-#         I(NHMC), 
-#         dt, 
-#         I(n_comps), 
-#         I(max_ptord), 
-#         I(measure_every), 
-#         I(n_copies),
-#         cuda_rng, 
-#         nhmc_rng, 
-#         en_fname, 
-#         config_fname, 
-#         lat_fname,
-#         I(iter_start), 
-#         x, 
-#         ener_meas
-#     )
-# end
