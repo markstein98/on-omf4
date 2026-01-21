@@ -115,3 +115,21 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const lat_fname::Union{Nothing, String}
     ener_meas::Union{Nothing, CuArray{F, 5}}
 end
+
+function get_infos_string(sim_infos::OMF_args_copies; n_decimals::Int=2, header::String="", sep::String="\n", prepend::String="", append::String="")
+    head_spaces = " " ^ length(header)
+    msg = header * "Simulation of O(" * string(sim_infos.n_comps + 1)
+    msg *= ") sigma model up to perturbative order " * string(sim_infos.max_ptord) * " (included), on "
+    msg *= string(sim_infos.n_copies) * " copies of a "
+    msg *= string(sim_infos.Npoint) * "x" * string(sim_infos.Npoint) * " lattice." * sep
+    msg *= head_spaces * "Computer-time integration steps of " * string(sim_infos.dt) * ", taking " * string(sim_infos.NHMC)
+    msg *= " of them on average and taking a measurement every " * string(sim_infos.measure_every) * "." * sep
+    msg *= head_spaces * "Starting from measurement #" * string(sim_infos.iter_start) * " out of " * string(sim_infos.n_meas)
+    if n_decimals <= 0
+        percentage = round(Int, sim_infos.iter_start / sim_infos.n_meas * 100)
+    else
+        percentage = round(sim_infos.iter_start / sim_infos.n_meas * 100 * 10^n_decimals) / 10^n_decimals
+    end
+    msg *= " (" * string(percentage) * "% of total)."
+    return prepend * msg * append
+end
