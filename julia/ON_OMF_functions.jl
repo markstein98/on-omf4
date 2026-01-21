@@ -230,10 +230,10 @@ end
 function launch_main_omf(config_fname::String)
     # Starts from scratch
     # Checking if configuration file exists and has all the mandatory parameters
-    if !isfile(args[2])
-        error("Configuration file not found: ", args[1])
+    if !isfile(config_fname)
+        error("Configuration file not found: ", config_fname)
     end
-    check_required_keys(args[2], true)
+    check_required_keys(config_fname, true)
     curr_time = current_time()
     println(curr_time, "Configuration file found.")
     curr_time = " "^(length(curr_time)-length("[INFO]: ")) * "[INFO]: "
