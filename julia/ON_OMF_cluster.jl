@@ -1,6 +1,6 @@
 using Dates
 
-include("ON_OMF_funcs_copies.jl")
+include("ON_OMF_functions.jl")
 
 function print_usage()
     println("Usage: $PROGRAM_FILE start config.toml")
