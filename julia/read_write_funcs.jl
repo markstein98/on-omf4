@@ -55,8 +55,14 @@ function get_job_name()
 end
 
 function get_remaining_time(jobid::String)
-    if jobid == ""
-        return 1000 # Only for testing on non-SLURM environments
+    if jobid == "" # Only for testing on non-SLURM environments
+        if isfile("remaining_time.txt")
+            f = open("remaining_time.txt")
+            t = tryparse(Int, readline(f))
+            close(f)
+            t !== nothing && return t
+        end
+        return 100000
     end
     t = read(`squeue -h -j $jobid -o "%L"`, String)
     return get_seconds(t)
