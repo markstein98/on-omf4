@@ -6,7 +6,7 @@ This repository contains code to simulate an O(N) theory on a 2-dimensional latt
 
 The code performs Monte Carlo simulations of O(N) quantum field theory on a 2D lattice using Hybrid Monte Carlo (HMC) algorithms. The simulation supports:
 - Variable lattice sizes (npoint × npoint)
-- Configurable O(N) theory with N = ncomp + 1 components
+- Configurable O(N) sigma model with N = ncomp + 1 components
 - Perturbative expansion up to specified orders
 - Checkpoint/resume functionality
 - Site-per-site energy analysis
@@ -21,7 +21,7 @@ The code performs Monte Carlo simulations of O(N) quantum field theory on a 2D l
 
 ### 1. Configuration File Setup
 
-**REQUIRED**: Before running the simulation, you must configure the environment:
+**REQUIRED**: Before running the simulation, you must edit the configuration file for the slurm environment:
 
 1. **Rename the configuration file**:
    ```bash
@@ -40,22 +40,19 @@ The code performs Monte Carlo simulations of O(N) quantum field theory on a 2D l
      JULIA_FOLDER_PATH="/full/path/to/omf4/repository"
      ```
 
-   - **Line 4**: Set the path where energy site-per-site `.mat` files will be saved
-     ```bash
-     SITE_ENERGY_PATH="/full/path/to/energy/output/directory"
-     ```
 
 ### 2. Directory Structure
 
 Ensure the following directories exist:
 ```
-├── logs/                    # For SLURM job logs (create if it does not exist)
-├── checkpoint/              # For simulation checkpoints (create if it does not exist)
-├── julia/                   # Julia source files
-├── call_sbatch.sh          # Main submission script
-├── job_sbatch.bash         # SLURM job script (should exist)
-├── configuration.conf      # Your configured settings
-└── README.md               # This file
+├── checkpoint/                # For simulation checkpoints (create if it does not exist)
+├── logs/                      # For SLURM job logs (create if it does not exist)
+├── julia/                     # Julia source files
+├── simulation_configurations/ # For simulations' TOML configuration files
+├── call_sbatch.sh             # Main submission script
+├── job_sbatch.bash            # SLURM job script (should exist)
+├── configuration.conf         # SLURM environment variables
+└── README.md                  # This file
 ```
 
 ### 3. Julia Dependencies
@@ -76,44 +73,74 @@ Install them using the following commands:
 
 ### Simulation Parameters
 
-The main simulation parameters are configured in `call_sbatch.sh` (lines 3-9):
+The main simulation parameters are configured in `simulation_configurations/configuration.conf` (the file can have any name).
 
-- **Line 3**: `npoint=30` - Number of lattice sites per side (creates 30×30 lattice)
-- **Line 4**: `nmeas=1000` - Number of energy measurements
-- **Line 5**: `NHMC=12` - Number of HMC integration steps
-- **Line 6**: `dt=0.05` - Stochastic time-step size
-- **Line 7**: `ncomp=14` - Number of independent components (O(N) with N=ncomp+1=15)
-- **Line 8**: `ptord=10` - Maximum perturbative order
-- **Line 9**: `every=7` - Measurement interval (skip 7 measurements between recordings)
+#### Required Parameters
+
+**Simulation Parameters**
+- `n_side_sites`: Defines the spatial dimensions of the simulation lattice. The complete lattice will be a 2D square grid with a total of `n_side_sites`×`n_side_sites` sites.
+- `n_measurements`: Total number of measurements to be taken during the simulation run.
+- `n_HMC_steps`: Average number of Hybrid Monte Carlo steps used for each time evolution iteration.
+- `dt`: The time step size (in computer time units) for numerical integration of the Langevin equation during evolution.
+- `n_indep_comps`: Number of independent field components. The simulated theory will be O(N) where N = n_indep_comps + 1.
+- `max_perturbative_order`: Maximum order in the perturbative expansion. The simulation includes effects up to g^`max_perturbative_order` in the coupling constant g, neglecting terms of order g^`(max_perturbative_order+1)` and higher.
+
+**Output Files**
+- `energy_filename`: Full path where mean energy measurements file will be saved (`.txt` format).
+- `checkpoint_filename`: Full path for the checkpoint file (`.jld` format) to save and restore simulation state.
+
+#### Optional Parameters
+##### Defaults will be used if the corresponding parameter is not present (or is commented out) in the configuration file
+
+- `measure_every`: Controls measurement frequency by saving one measurement for every `measure_every`, in order to decrease autocorrelation. (Default: 1)
+- `n_copies`: Number of independent lattice configurations to simulate in parallel, allowing for better statistics. (Default: 1)
+- `energy_site_by_site_matlab`: If specified, saves the spatial distribution of energy across all lattice sites in MATLAB format for detailed analysis. (Default: disabled)
+- `max_saving_time`: Maximum time in seconds allocated for saving the simulation state before the program exits. (Default: 600 seconds or 10 minutes)
+- `cuda_seed`: Seed for GPU random number generator for reproducibility. (Default: `0` -> random)
+- `cpu_rng_seed`: Seed for CPU random number generator for reproducibility. (Default: `0` -> random)
+- `intBits`: Bit precision for integer variables on GPU. Allowed values: 32 for Int32, or 64 for Int64. (Default: 32)
+- `floatBits`: Bit precision for floating-point variables on GPU. Allowed values: 32 for Float32, or 64 for Float64. (Default: 32). Note: Mismatched `intBits` and `floatBits` values will cause performance issues and will trigger a warning from the program (it will execute nonetheless).
 
 ### SLURM Resource Configuration
 
-The SLURM job parameters are configured in `call_sbatch.sh` (lines 15-25), you can change these parameters accordingly to your needs and your SLURM environment availability:
+The simulation is launched by the script `call_sbatch.sh` (make sure it is executable, with the command `chmod +x call_sbatch.sh`).
+
+The SLURM job parameters are configured in `call_sbatch.sh` (lines 10-20), you can change these parameters accordingly to your needs and your SLURM environment availability:
 
 - **GPU**: Requests 1 A100 80GB GPU (`--gres=gpu:a100_80g:1`)
-- **Memory**: 40GB RAM allocation
+- **Memory**: 80GB RAM allocation
 - **Time**: 1 day runtime limit
 - **Partition**: Uses `gpu` partition with `gpu` QoS
 
 ### Execution Options
 
-The script provides three execution modes (lines 28-30):
+The path to the configuraton file (to start the execution) or the checkpoint file (to resume a previously started execution) can be configured in the variables at lines 3-6.
+
+The script provides two execution modes (lines 23-24):
 
 1. **Start new simulation**:
    ```bash
    ./call_sbatch.sh
    ```
-   Uncomment line 28 in `call_sbatch.sh`
+   Uncomment line 23 in `call_sbatch.sh`
 
-2. **Start with site-per-site energy saving**:
+2. **Resume from checkpoint**:
    ```bash
    ./call_sbatch.sh
    ```
-   Uncomment line 29 in `call_sbatch.sh` (default)
+   Uncomment line 24 in `call_sbatch.sh`
 
-3. **Resume from checkpoint**:
-   ```bash
-   ./call_sbatch.sh
-   ```
-   Uncomment line 30 in `call_sbatch.sh`
+### Manual Execution
 
+The simulation can also be launched manually (for testing) via the commands:
+```bash
+julia julia/ON_OMF_cluster.jl start path/to/configuration.toml
+```
+to start a new simulation, or
+```bash
+julia julia/ON_OMF_cluster.jl load path/to/checkpoint.jld
+```
+to resume an already started simulation.
+
+# Warning
+This version is not backwards-compatible with the previous versions, where the simulation configuration parameters were passed as arguments to the julia program.

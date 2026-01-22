@@ -1,7 +1,9 @@
 #!/bin/bash
 
-config_path="simulation_configurations" # path to simulation configuration files folder
+config_path="simulation_configurations" # path to simulation configuration files folder (without trailing /)
 config_fname="sample_configuration.toml" # name of simulation configuration file
+checkpt_path="checkpoint" # path to simulation checkpoint files folder (without trailing /)
+checkpt_fname="sample_checkpoint.jld" # name of simulation checkpoint file
 
 source configuration.conf
 
@@ -21,4 +23,4 @@ SBATCH_OPTS=(
 )
 
 sbatch ${SBATCH_OPTS[@]} job_sbatch.bash start $config_path/$config_fname # to start
-# sbatch ${SBATCH_OPTS[@]} job_sbatch.bash load $checkpt_fname # to resume
+# sbatch ${SBATCH_OPTS[@]} job_sbatch.bash load $checkpt_path/$checkpt_fname # to resume
