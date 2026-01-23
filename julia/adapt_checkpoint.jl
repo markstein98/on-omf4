@@ -55,7 +55,7 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
         println("Energy site-by-site checkpoint NOT found: ", lat_chkpt)
     end
     old_args::old_OMF_args_copies = deserialize(old_checkpoint_fname)
-    new_args = OMF_args_copies(
+    new_args = OMF_args(
         old_args.Npoint,
         old_args.n_meas,
         old_args.NHMC,
@@ -92,7 +92,7 @@ function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""
         println("Energy site-by-site checkpoint NOT found: ", lat_chkpt)
     end
     old_args::old_OMF_args = deserialize(old_checkpoint_fname)
-    new_args = OMF_args_copies(
+    new_args = OMF_args(
         old_args.Npoint,
         old_args.n_meas,
         old_args.NHMC,

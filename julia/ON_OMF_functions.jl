@@ -98,7 +98,7 @@ end
     return nothing
 end
 
-function main_omf(args::OMF_args_copies{F, I, I2}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
+function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
 
     # Print some logging information
     println(get_infos_string(args; header="[Simulation Infos]: ", prepend="\n", append="\n"))
@@ -257,7 +257,7 @@ function launch_main_omf(config_fname::String)
     # Arguments initialization
     floatType = typeof(conf.dt)
     n_ords = conf.max_ptord + one(conf.max_ptord)
-    args = OMF_args_copies(
+    args = OMF_args(
         conf.Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every, conf.n_copies,
         cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
         CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_comps, conf.n_copies),

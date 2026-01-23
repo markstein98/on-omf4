@@ -95,7 +95,7 @@ function save_matlab_energy(lat_fname::String, lat)
     return
 end
 
-mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const Npoint::I
     const n_meas::I
     const NHMC::I
@@ -116,7 +116,7 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     ener_meas::Union{Nothing, CuArray{F, 5}}
 end
 
-function get_infos_string(sim_infos::OMF_args_copies; n_decimals::Int=2, header::String="", sep::String="\n", prepend::String="", append::String="")
+function get_infos_string(sim_infos::OMF_args; n_decimals::Int=2, header::String="", sep::String="\n", prepend::String="", append::String="")
     head_spaces = " " ^ length(header)
     msg = header * "Simulation of O(" * string(sim_infos.n_comps + 1)
     msg *= ") sigma model up to perturbative order " * string(sim_infos.max_ptord) * " (included), on "
