@@ -19,7 +19,7 @@ The code performs Monte Carlo simulations of O(N) quantum field theory on a 2D l
 
 ## Installation and Setup
 
-### 1. Configuration File Setup
+### 1. SLURM Configuration File Setup
 
 **REQUIRED**: Before running the simulation, you must edit the configuration file for the slurm environment:
 
@@ -144,3 +144,38 @@ to resume an already started simulation.
 
 # Warning
 This version is not backwards-compatible with the previous versions, where the simulation configuration parameters were passed as arguments to the julia program.
+
+## Checkpoint Adaptation
+### Usage
+
+Use the proper function in the julia/adapt_checkpoint.jl file to generate a new checkpoint file that is compatible with this version, by running julia from the project directory.
+
+```julia
+julia> include("julia/adapt_checkpoint.jl")
+```
+
+- If you need to adapt a checkpoint from a simulation **without** different copies:  
+
+   ```julia
+   julia> adapt_old_checkpoint("checkpoint/old_checkpoint.jld")
+   ```
+
+- If you need to adapt a checkpoint from a simulation **with** different copies:  
+
+   ```julia
+   julia> adapt_old_checkpoint_copies("checkpoint/old_checkpoint.jld")
+   ```
+
+### Optional arguments
+
+For both functions, there is an optional argument, that is the path to the matlab file in which to save the energy site-by-site (if provided in the previous execution):
+```julia
+julia> adapt_old_checkpoint("checkpoint/old_checkpoint.jld", "/path/to/file.mat")
+```
+
+And also two optional keyword arguments:
+```julia
+julia> adapt_old_checkpoint("checkpoint/old_checkpoint.jld"; max_saving_time::Int, config_fname::String="")
+```
+- `max_saving_time` is the time allocated for saving, as explained in [configuration file's optional parameters](#optional-parameters). By default it is set to 600 s, or 10 min.
+- `config_fname` is the path to the [configuration file](#simulation-parameters). It is just used to fill the correct field in the struct and will be printed in the log output, it will not be used by the simulation. By default it is set to an empty string.
