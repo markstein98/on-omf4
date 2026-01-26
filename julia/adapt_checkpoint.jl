@@ -72,8 +72,8 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
         max_saving_time,
         old_args.iter_start,
         old_args.x,
-        lat_present ? nothing : lat_fname,
-        lat_present ? nothing : deserialize(lat_chkpt)
+        lat_present ? lat_fname : nothing,
+        lat_present ? deserialize(lat_chkpt) : nothing
     )
     serialize(new_checkpoint_fname, new_args)
     println("New checkpoint saved to file: ", new_checkpoint_fname)
@@ -109,8 +109,8 @@ function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""
         max_saving_time,
         old_args.iter_start,
         reshape(old_args.x, size(old_args.x)..., 1),
-        lat_present ? nothing : lat_fname,
-        lat_present ? nothing : reshape(old_ener_meas, (size(old_ener_meas)[1:3]..., 1, size(old_ener_meas)[4:end]...))
+        lat_present ? lat_fname : nothing,
+        lat_present ? reshape(old_ener_meas, (size(old_ener_meas)[1:3]..., 1, size(old_ener_meas)[4:end]...)) : nothing
     )
     serialize(new_checkpoint_fname, new_args)
     println("New checkpoint saved to file: ", new_checkpoint_fname)
