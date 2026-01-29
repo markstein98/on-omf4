@@ -7,16 +7,25 @@ required_config_keys = [
 ]
 
 function is_file_writeable(filepath::String)
+    # Helper function to extend compatibility for Julia v. < 1.11
+    function is_writable(path)
+        if hasmethod(iswritable, (String,))
+            return iswritable(path)
+        else
+            return (Sys.uperm(path) & 0x02) != 0
+        end
+    end
+
     if ispath(filepath)
         # File exists - check if it's writable
-        return iswritable(filepath)
+        return is_writable(filepath)
     else
         # File doesn't exist - check if parent directory is writable
         parent_dir = dirname(filepath)
         if isempty(parent_dir)
             parent_dir = "."
         end
-        return ispath(parent_dir) && iswritable(parent_dir)
+        return ispath(parent_dir) && is_writable(parent_dir)
     end
 end
 
