@@ -18,18 +18,10 @@ mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     x::CuArray{F, 5}
 end
 
-mutable struct old_OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
-    const Npoint::I
-    const n_meas::I
-    const NHMC::I
-    const dt::F
-    const n_comps::I
-    const max_ptord::I
-    const measure_every::I
-    const cuda_rng::CUDA.RNG
-    const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2 
-    x::CuArray{F, 4}
+function OMF_args(Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I, measure_every::I, cuda_rng::CUDA.RNG, nhmc_rng::Random.TaskLocalRNG, iter_start::I2, 
+    x::CuArray{F, 4}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
+    return (Npoint=Npoint, n_meas=n_meas, NHMC=NHMC, dt=dt, n_comps=n_comps, max_ptord=max_ptord, measure_every=measure_every, cuda_rng=cuda_rng, nhmc_rng=nhmc_rng,
+    iter_start=iter_start, x=x)
 end
 
 function get_energy_filename(checkpt_fname::String)
