@@ -70,7 +70,7 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
         config_fname,
         new_checkpoint_fname,
         max_saving_time,
-        old_args.iter_start,
+        typeof(old_args.Npoint)(old_args.iter_start),
         old_args.x,
         lat_present ? lat_fname : nothing,
         lat_present ? deserialize(lat_chkpt) : nothing
@@ -107,7 +107,7 @@ function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""
         config_fname,
         new_checkpoint_fname,
         max_saving_time,
-        old_args.iter_start,
+        typeof(old_args.Npoint)(old_args.iter_start),
         reshape(old_args.x, size(old_args.x)..., 1),
         lat_present ? lat_fname : nothing,
         lat_present ? reshape(old_ener_meas, (size(old_ener_meas)[1:3]..., 1, size(old_ener_meas)[4:end]...)) : nothing
