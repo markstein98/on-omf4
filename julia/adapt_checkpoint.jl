@@ -3,7 +3,7 @@ using Serialization
 
 include("read_write_funcs.jl")
 
-mutable struct old_OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const Npoint::I
     const n_meas::I
     const NHMC::I
@@ -54,7 +54,7 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
     elseif lat_fname != ""
         println("Energy site-by-site checkpoint NOT found: ", lat_chkpt)
     end
-    old_args::old_OMF_args_copies = deserialize(old_checkpoint_fname)
+    old_args::OMF_args_copies = deserialize(old_checkpoint_fname)
     new_args = OMF_args(
         old_args.Npoint,
         old_args.n_meas,
