@@ -44,15 +44,17 @@ function get_lat_checkpoint(lat_fname::String)
     return fname
 end
 
-function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::String=""; config_fname::String="", max_saving_time::Int=600)
+function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::String=""; lat_checkpt::String="", config_fname::String="", max_saving_time::Int=600)
     new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
-    lat_chkpt = get_lat_checkpoint(lat_fname)
     lat_present = false
-    if lat_fname != "" && isfile(lat_chkpt)
-        println("Energy site-by-site checkpoint found.")
-        lat_present = true
-    elseif lat_fname != ""
-        println("Energy site-by-site checkpoint NOT found: ", lat_chkpt)
+    if lat_fname != ""
+        lat_chkpt = lat_chkpt != "" ? lat_chkpt : get_lat_checkpoint(lat_fname)
+        if isfile(lat_chkpt)
+            println("Energy site-by-site checkpoint found.")
+            lat_present = true
+        else
+            error("Energy site-by-site checkpoint NOT found: $lat_chkpt")
+        end
     end
     old_args::OMF_args_copies = deserialize(old_checkpoint_fname)
     new_args = OMF_args(
@@ -80,16 +82,17 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
     return
 end
 
-function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""; config_fname::String="", max_saving_time::Int=600)
+function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""; lat_checkpt::String="", config_fname::String="", max_saving_time::Int=600)
     new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
-    lat_chkpt = get_lat_checkpoint(lat_fname)
     lat_present = false
-    if lat_fname != "" && isfile(lat_chkpt)
-        println("Energy site-by-site checkpoint found.")
-        old_ener_meas = deserialize(lat_chkpt)
-        lat_present = true
-    elseif lat_fname != ""
-        println("Energy site-by-site checkpoint NOT found: ", lat_chkpt)
+    if lat_fname != ""
+        lat_chkpt = lat_chkpt != "" ? lat_chkpt : get_lat_checkpoint(lat_fname)
+        if isfile(lat_chkpt)
+            println("Energy site-by-site checkpoint found.")
+            lat_present = true
+        else
+            error("Energy site-by-site checkpoint NOT found: $lat_chkpt")
+        end
     end
     old_args::old_OMF_args = deserialize(old_checkpoint_fname)
     new_args = OMF_args(
