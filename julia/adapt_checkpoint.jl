@@ -86,7 +86,7 @@ function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""
             error("Energy site-by-site checkpoint NOT found: $lat_chkpt")
         end
     end
-    old_args::old_OMF_args = deserialize(old_checkpoint_fname)
+    old_args = deserialize(old_checkpoint_fname)
     new_args = OMF_args(
         old_args.Npoint,
         old_args.n_meas,
