@@ -36,7 +36,7 @@ function get_lat_checkpoint(lat_fname::String)
     return fname
 end
 
-function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::String=""; lat_checkpt::String="", config_fname::String="", max_saving_time::Int=600)
+function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::String=""; lat_chkpt::String="", config_fname::String="", max_saving_time::Int=600)
     new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
     lat_present = false
     if lat_fname != ""
@@ -74,7 +74,7 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
     return
 end
 
-function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""; lat_checkpt::String="", config_fname::String="", max_saving_time::Int=600)
+function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""; lat_chkpt::String="", config_fname::String="", max_saving_time::Int=600)
     new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
     lat_present = false
     if lat_fname != ""
