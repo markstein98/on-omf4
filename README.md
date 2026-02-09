@@ -173,9 +173,10 @@ For both functions, there is an optional argument, that is the path to the matla
 julia> adapt_old_checkpoint("checkpoint/old_checkpoint.jld", "/path/to/file.mat")
 ```
 
-And also two optional keyword arguments:
+And also three optional keyword arguments:
 ```julia
-julia> adapt_old_checkpoint("checkpoint/old_checkpoint.jld"; max_saving_time::Int, config_fname::String="")
+julia> adapt_old_checkpoint("checkpoint/old_checkpoint.jld"; max_saving_time::Int, config_fname::String="", lat_chkpt::String="")
 ```
 - `max_saving_time` is the time allocated for saving, as explained in [configuration file's optional parameters](#optional-parameters). By default it is set to 600 s, or 10 min.
 - `config_fname` is the path to the [configuration file](#simulation-parameters). It is just used to fill the correct field in the struct and will be printed in the log output, it will not be used by the simulation. By default it is set to an empty string.
+- `lat_chkpt` is the path to the old checkpoint file where the energy site-by-site was saved. If not provided, it will be computed automatically.
