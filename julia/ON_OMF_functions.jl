@@ -6,6 +6,7 @@ using Serialization
 include("kernel_compilation.jl")
 include("read_write_funcs.jl")
 include("ON_OMF_kernels.jl")
+include("load_config.jl")
 
 function compute_gradient!(gx2::Array{CompiledKernel}, grad_ker::Array{CompiledKernel})
     # calcola -gradiente (in parallelo) su ogni sito del reticolo e lo mette in gradient
@@ -97,34 +98,36 @@ end
     return nothing
 end
 
-function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat_fname::AbstractString="") where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
-    
+function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
+
+    # Print some logging information
+    println(get_infos_string(args; header="[Simulation Infos]: ", prepend="\n", append="\n"))
     println(current_time(), "Variables initialization started.")
 
-    # Determine if we should save lattice data
-    save_lattice = lat_fname != ""
-    
     # Extract (almost) all the arguments
-    Npoint = args.Npoint
-    n_meas = args.n_meas
-    NHMC = args.NHMC
-    dt = args.dt
-    n_comps = args.n_comps
-    n_copies = args.n_copies
-    max_ptord = args.max_ptord
+    Npoint        = args.Npoint
+    n_meas        = args.n_meas
+    NHMC          = args.NHMC
+    dt            = args.dt
+    n_comps       = args.n_comps
+    n_copies      = args.n_copies
+    max_ptord     = args.max_ptord
     measure_every = args.measure_every
-    x = args.x
-    cuda_rng = args.cuda_rng
-    nhmc_rng = args.nhmc_rng
-    
-    # Setup checkpoint filenames
-    checkpt_fname = get_checkpoint_filename(en_fname)
-    if save_lattice
-        lat_checkpt = get_lat_checkpoint(lat_fname)
-    end
+    x             = args.x
+    cuda_rng      = args.cuda_rng
+    nhmc_rng      = args.nhmc_rng
+    en_fname      = args.en_fname
+    checkpt_fname = args.checkpt_fname
 
+    # Determine if we should save lattice data
+    save_lattice = args.lat_fname !== nothing
+    if save_lattice
+        lat_fname::String = args.lat_fname
+        ener_meas::CuArray{F, 5} = args.ener_meas
+    end
+    
     n_ords = max_ptord + one(max_ptord)
-    Npoint2 = Npoint^2
+    Npoint2 = Npoint ^ 2
 
     # Initialize additional variables
     x_back = CuArray{F}(undef, n_ords, Npoint, Npoint, n_comps, n_copies)
@@ -154,27 +157,20 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         for i in 2:n_copies
             push!(mean_energy_files, open_energy_file(en_fnames[i], "w", true))
         end
-        if save_lattice
-            ener_meas = CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies, n_meas)
-        end
     else
         mean_energy_files = [open_energy_file(en_fname, "a", false)] # without header, appending
         for i in 2:n_copies
             push!(mean_energy_files, open_energy_file(en_fnames[i], "a", false))
         end
-        if save_lattice
-            ener_meas = deserialize(lat_checkpt)
-        end
     end
 
-    # randomizzazione di NHMC
+    # randomization of NHMC
     binom_distr = Binomial(NHMC*10,1/10)
 
-    # creazione delle funzioni a parametri fissati
+    # creation of fixed-parameters functions
     f_gx2, f_grad, f_zeromode, f_ener = create_kernels(F, Npoint, max_ptord, n_comps)
 
-    # compilazione dei kernel e creazione di struct con i kernel compilati
-
+    # kernel compilation and compiled-kernel structs creation
     for i in eachindex(gx2)
         @inbounds @views gx2[i] = compile_kernel(f_gx2, (x[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
         @inbounds @views grad_ker[i] = compile_kernel(f_grad, (x[:,:,:,:,i], gradient[:,:,:,:,i], x2[:,:,:,i]), Npoint2)
@@ -182,7 +178,8 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         @inbounds @views compute_ener[i] = compile_kernel(f_ener, (x[:,:,:,:,i], ener[:,:,:,i], x2[:,:,:,i]), Npoint2)
     end
     
-    println(current_time(), "Variables initialization and Kernel compilation successfully completed.")
+    print(current_time(), "Variables initialization and Kernel compilation successfully completed. ")
+    println("Simulation is starting...")
 
     jobid = get_job_id()
 
@@ -196,7 +193,6 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         end
         
         compute_energy!(energia, x, ener, zero_modo, Npoint, zero_mode, gx2, compute_ener)
-           
         
         # Store energy measurements if saving lattice
         if save_lattice
@@ -206,15 +202,16 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
         for i in 1:n_copies
             @inbounds @views write_line(mean_energy_files[i], Array(energia[:, i]))
         end
-        x_back .= x # are these two lines needed in order to restart the simulation?? 
+        x_back .= x
         args.iter_start = t + 1
         
         # Check remaining time and save state if needed
-        if get_remaining_time(jobid) < 600
-            # 10 min remaining, save state and exit
+        if get_remaining_time(jobid) < args.max_saving_time
+            # time's almost up, save state and exit
             println(current_time(), "Saving status.")
-            save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
+            save_state(checkpt_fname, args)         
             println(current_time(), "Saving status completed.")
+            execute_self(checkpt_fname)
             return
         end
     end
@@ -222,80 +219,73 @@ function main_omf(args::OMF_args_copies{F, I, I2}, en_fname::AbstractString, lat
     # Final cleanup and file operations
     for i in 1:n_copies
         close(mean_energy_files[i])
-        println(current_time(), "Energy written to file ", en_fnames[i])
+        print(current_time(), "Mean energy ")
+        n_copies > 1 && print("of copy $i ")
+        println("written to file: ", en_fnames[i])
     end
-    
-    if save_lattice
-        save_lat(lat_fname, Array(ener_meas))
-        # remove_files(checkpt_fname, lat_checkpt)
-    else
-        # remove_files(checkpt_fname)
-    end
-    
-    println(current_time(), "Execution successfully terminated.")
+
+    # Saving energy site-by-site on matlab file
+    save_lattice && save_matlab_energy(lat_fname, Array(ener_meas))
+    println(current_time(), "All measurements successfully taken.")
     return
 end
 
-function launch_main_omf(
-    Npoint::I1,
-    n_meas::I1,
-    NHMC::I1,
-    dt::F,
-    n_comps::I1,
-    max_ptord::I1,
-    measure_every::I1,
-    n_copies::I1,
-    lat_fname::AbstractString="";
-    cuda_seed::I2=0,
-    nhmc_seed::I3=0
-    ) where {F <: AbstractFloat, I1 <: Integer, I2 <: Integer, I3 <: Integer}
-    en_fname = build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measure_every)
-    checkpt_fname = get_checkpoint_filename(en_fname)
-    println("Received simulation infos. Trying to see if there is already some data...")
-    if isfile(checkpt_fname) && isfile(en_fname) && (lat_fname == "" || isfile(get_lat_checkpoint(lat_fname)))
-        # Resume execution
-        launch_main_omf(checkpt_fname, lat_fname)
-        return
-    end
+function launch_main_omf(config_fname::String)
     # Starts from scratch
-    println("Some file with previous data was not found. Starting anew...")
-    cuda_rng = cuda_seed == 0 ? CUDA.RNG() : CUDA.RNG(cuda_seed)
-    nhmc_rng = Random.default_rng()
-    nhmc_seed != 0 && Random.seed!(nhmc_rng, nhmc_seed)
-    args = OMF_args_copies(Npoint, n_meas, NHMC, dt, n_comps, max_ptord, measure_every, n_copies, cuda_rng, nhmc_rng,
-                    1, CUDA.zeros(F, max_ptord+1, Npoint, Npoint, n_comps, n_copies))
-    if lat_fname == ""
-        main_omf(args, en_fname)
-    else
-        main_omf(args, en_fname, lat_fname)
+    # Checking if configuration file exists and has all the mandatory parameters
+    if !isfile(config_fname)
+        error("Configuration file not found: ", config_fname)
     end
+    check_required_keys(config_fname, true)
+    curr_time = current_time()
+    println(curr_time, "Configuration file found.")
+    curr_time = " "^(length(curr_time)-length("[INFO]: ")) * "[INFO]: "
+    println(curr_time, "Configuration file: ", config_fname)
+    # Load config file
+    conf = parse_config_file(config_fname)
+    # checking writeability of checkpoint and energy filenames
+    if !is_file_writeable(conf.checkpt_fname)
+        error("Checkpoint file ", conf.checkpt_fname, " is not writeable.")
+    end
+    if !is_file_writeable(conf.en_fname)
+        error("Energy file ", conf.en_fname, " is not writeable.")
+    end
+    # Setting specific rng seeds, if provided
+    cuda_rng = conf.cuda_seed == 0 ? CUDA.RNG() : CUDA.RNG(conf.cuda_seed)
+    nhmc_rng = Random.default_rng()
+    conf.cpu_rng_seed != 0 && Random.seed!(nhmc_rng, conf.cpu_rng_seed)
+    # Arguments initialization
+    floatType = typeof(conf.dt)
+    n_ords = conf.max_ptord + one(conf.max_ptord)
+    args = OMF_args(
+        conf.Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every, conf.n_copies,
+        cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
+        CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_comps, conf.n_copies),
+        conf.lat_file,
+        conf.lat_file == nothing ? nothing : CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas)
+    )
+    println(curr_time, "Checkpoint file: ", args.checkpt_fname)
+    println(curr_time, "Energy file: ", args.en_fname)
+    println(curr_time, "Starting new simulation...")
+    main_omf(args)
     return
 end
 
-function launch_main_omf(checkpt_fname::AbstractString, lat_fname::AbstractString="")
+function resume_main_omf(checkpt_fname::String)
     # Resumes execution
     if !isfile(checkpt_fname)
-        println("Error: file $checkpt_fname not found. Exiting")
+        error("Checkpoint file $checkpt_fname not found.")
         return
     end
-    en_fname = get_energy_filename(checkpt_fname)
-    if !isfile(en_fname)
-        println("Error: file $en_fname not found. Exiting")
-        return
-    end
-    if lat_fname != ""
-        lat_checkpt = get_lat_checkpoint(lat_fname)
-        if !isfile(lat_checkpt)
-            println("Error: file $lat_checkpt not found. Exiting")
-            return
-        end
-    end
-    println("Found necessary files. Resuming execution...")
+    # Load config file
     args = deserialize(checkpt_fname)
-    if lat_fname == ""
-        main_omf(args, en_fname)
-    else
-        main_omf(args, en_fname, lat_fname)
-    end
+    curr_time = current_time()
+    println(curr_time, "Checkpoint file found.")
+    curr_time = " "^(length(curr_time)-length("[INFO]: ")) * "[INFO]: "
+    println(curr_time, "Configuration file: ", args.config_fname, " (could be outdated).")
+    println(curr_time, "Checkpoint file: ", checkpt_fname)
+    println(curr_time, "Energy file: ", args.en_fname)
+    println(curr_time, "Resuming execution...")
+    main_omf(args)
     return
 end

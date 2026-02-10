@@ -31,33 +31,7 @@ function get_copy_energy_filename(energy_filename, n_copy)
     return energy_filename[1:end-4] * "_copy" * string(n_copy) * ".txt"
 end
 
-function build_energy_fname(n_comps, Npoint, dt, max_ptord, NHMC, n_meas, measure_every)
-    folder = "../energies/"
-    fname = folder * "O" * string(n_comps+1) * "_Npoint" * string(Npoint)
-    fname *= "_dt" * string(dt) * "_ord" * string(max_ptord) * "_NHMC" * string(NHMC)
-    fname *= "_nMeas" * string(n_meas) * "_every" * string(measure_every) * ".txt"
-    return fname
-end
-
-function get_checkpoint_filename(energy_fname::AbstractString)
-    fname = "../checkpoint" * energy_fname[findlast('/', energy_fname):end] # changes directory
-    fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
-    return fname
-end
-
-function get_energy_filename(checkpt_fname::AbstractString)
-    fname = "../energies" * checkpt_fname[findlast('/', checkpt_fname):end] # changes directory
-    fname = fname[1:findlast('.', fname)] * "txt" # changes the extension
-    return fname
-end
-
-function get_lat_checkpoint(lat_fname::AbstractString) # TODO: fix '/' bug if '/' is not present in lat_fname
-    fname = "../checkpoint" * lat_fname[findlast('/', lat_fname):end] # changes directory
-    fname = fname[1:findlast('.', fname)] * "jld" # changes the extension
-    return fname
-end
-
-function get_seconds(time::AbstractString)
+function get_seconds(time::String)
     seconds = 0
     sep = findfirst('-', time)
     if !(sep === nothing)
@@ -80,9 +54,16 @@ function get_job_name()
     return get(ENV, "SLURM_JOB_NAME", "")
 end
 
-function get_remaining_time(jobid::AbstractString)
-    if jobid == ""
-        return 1000 # Only for testing on non-SLURM environments
+function get_remaining_time(jobid::String)
+    if jobid == "" # Only for testing on non-SLURM environments
+        fname = "remaining_time.txt"
+        if isfile(fname)
+            f = open(fname)
+            t = tryparse(Int, readline(f))
+            close(f)
+            t !== nothing && return t
+        end
+        return 100000
     end
     t = read(`squeue -h -j $jobid -o "%L"`, String)
     return get_seconds(t)
@@ -92,21 +73,13 @@ function get_remaining_time()
     return get_remaining_time(get_job_id())
 end
 
-function save_state(fname::AbstractString, data)
+function save_state(fname::String, data)
     serialize(fname, data)
     println(current_time(), "State saved to file \"" * fname * "\"")
     return
 end
 
-function save_state(fname::AbstractString, data, lat_checkpt_fname::AbstractString, lat)
-    serialize(fname, data)
-    println(current_time(), "State saved to file \"" * fname * "\"")
-    serialize(lat_checkpt_fname, lat)
-    println(current_time(), "Lattice saved to file \"" * lat_checkpt_fname * "\"")
-    return
-end
-
-function execute_self(fname::AbstractString)
+function execute_self(fname::String)
     jname = get_job_name()
     bashfile = "./resume_sbatch.sh"
     command = `$bashfile $jname $fname`
@@ -116,56 +89,10 @@ function execute_self(fname::AbstractString)
     return
 end
 
-function execute_self(fname::AbstractString, lat_fname::AbstractString)
-    jname = get_job_name()
-    bashfile = "./resume_sbatch.sh"
-    command = `$bashfile $jname $fname $lat_fname`
-    exec_time = current_time()
-    println(exec_time, "Re-executing itself with command: ", command)
-    println(" "^length(exec_time), read(command, String))
-    return
-end
-
-function save_lat(lat_fname::AbstractString, lat)
+function save_matlab_energy(lat_fname::String, lat)
     matwrite(lat_fname, Dict("energies"=>lat))
     println(current_time(), "Energy history written to file ", lat_fname)
     return
-end
-
-function remove_files(fnames...)
-    println(current_time(), "Execution successful.")
-    for fname in fnames
-        if isfile(fname)
-            rm(fname)
-            println(current_time(), "Removed file:", fname)
-        end
-    end
-end
-
-function save_status(checkpt_fname, args, lat_checkpt, ener_meas, lat_fname, save_lattice)
-    if save_lattice
-        save_state(checkpt_fname, args, lat_checkpt, ener_meas)
-        execute_self(checkpt_fname, lat_fname)
-    else
-        save_state(checkpt_fname, args)
-        execute_self(checkpt_fname)
-    end
-    return
-end
-
-mutable struct OMF_args_copies{F <: AbstractFloat, I <: Integer, I2 <: Integer}
-    const Npoint::I
-    const n_meas::I
-    const NHMC::I
-    const dt::F
-    const n_comps::I
-    const max_ptord::I
-    const measure_every::I
-    const n_copies::I
-    const cuda_rng::CUDA.RNG
-    const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2
-    x::CuArray{F, 5}
 end
 
 mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
@@ -176,8 +103,33 @@ mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const n_comps::I
     const max_ptord::I
     const measure_every::I
+    const n_copies::I
     const cuda_rng::CUDA.RNG
     const nhmc_rng::Random.TaskLocalRNG
-    iter_start::I2 
-    x::CuArray{F, 4}
+    const en_fname::String
+    const config_fname::String
+    const checkpt_fname::String
+    const max_saving_time::I2
+    iter_start::I
+    x::CuArray{F, 5}
+    const lat_fname::Union{Nothing, String}
+    ener_meas::Union{Nothing, CuArray{F, 5}}
+end
+
+function get_infos_string(sim_infos::OMF_args; n_decimals::Int=2, header::String="", sep::String="\n", prepend::String="", append::String="")
+    head_spaces = " " ^ length(header)
+    msg = header * "Simulation of O(" * string(sim_infos.n_comps + 1)
+    msg *= ") sigma model up to perturbative order " * string(sim_infos.max_ptord) * " (included), on "
+    msg *= string(sim_infos.n_copies) * " copies of a "
+    msg *= string(sim_infos.Npoint) * "x" * string(sim_infos.Npoint) * " lattice." * sep
+    msg *= head_spaces * "Computer-time integration steps of " * string(sim_infos.dt) * ", taking " * string(sim_infos.NHMC)
+    msg *= " of them on average and saving a measurement every " * string(sim_infos.measure_every) * "." * sep
+    msg *= head_spaces * "Starting from measurement #" * string(sim_infos.iter_start) * " out of " * string(sim_infos.n_meas)
+    if n_decimals <= 0
+        percentage = round(Int, sim_infos.iter_start / sim_infos.n_meas * 100)
+    else
+        percentage = round(sim_infos.iter_start / sim_infos.n_meas * 100 * 10^n_decimals) / 10^n_decimals
+    end
+    msg *= " (" * string(percentage) * "% of total)."
+    return prepend * msg * append
 end
