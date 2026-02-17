@@ -67,7 +67,7 @@ The following Julia packages should be installed before executing any simulaiton
 Install them using the following commands:
 - Launch the Julia environment
 - Press `]` to enter the Pkg environment
-- Execute ```install CUDA Combinatorics Distributions MAT Serialization```
+- Execute ```add CUDA Combinatorics Distributions MAT Serialization```
 
 ## Running the Simulation
 
