@@ -208,15 +208,14 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
         # Check remaining time and save state if needed
         if get_remaining_time(jobid) < args.max_saving_time
             # time's almost up, save state and exit
-            println(current_time(), "Saving status.")
-            save_state(checkpt_fname, args)         
-            println(current_time(), "Saving status completed.")
+            save_state(checkpt_fname, args)
             execute_self(checkpt_fname)
             return
         end
     end
     
     # Final cleanup and file operations
+    save_state(checkpt_fname, args)
     for i in 1:n_copies
         close(mean_energy_files[i])
         print(current_time(), "Mean energy ")

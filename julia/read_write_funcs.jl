@@ -74,8 +74,9 @@ function get_remaining_time()
 end
 
 function save_state(fname::String, data)
+    println(current_time(), "Saving status.")
     serialize(fname, data)
-    println(current_time(), "State saved to file \"" * fname * "\"")
+    println(current_time(), "Saving status completed.\n", "State saved to file \"" * fname * "\"")
     return
 end
 
