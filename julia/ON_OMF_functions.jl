@@ -66,7 +66,7 @@ function compute_energy!(
     ) where {F <: AbstractFloat, I <: Integer}
     # computes the mean of the energy of all sites at time t
    
-    CUDA.@sync @inbounds @views zero_modo .= CUDA.sum(CUDA.sum(x, dims=3), dims=2)[:,1,1,:,:] ./ (Npoint^2)
+    CUDA.@sync @inbounds @views zero_modo .= CUDA.sum(x, dims=(2, 3))[:,1,1,:,:] ./ (Npoint^2)
     CUDA.fill!(ener, zero(F))
 
     # sottraggo lo zero modo da x (x = x - zero_modo) e calcolo l'energia media
@@ -88,7 +88,7 @@ function compute_energy!(
         end
     end 
     
-    CUDA.@sync @inbounds @views energy.= CUDA.sum(CUDA.sum(ener, dims=3), dims=2)[:,1,1,:] ./ (Npoint^2)
+    CUDA.@sync @inbounds @views energy.= CUDA.sum(ener, dims=(2, 3))[:,1,1,:] ./ (Npoint^2)
     return nothing
 end
 
