@@ -55,11 +55,12 @@ function omf_evolution!(x::CuArray{F, 5}, Pi::CuArray{F, 5}, dt::F, gradient::Cu
 end
 
 function compute_energy!(
-    energy::CuArray{F, 2},
+    energy::CuArray{F, 1},
     x::CuArray{F, 5},
     ener::CuArray{F, 4},
     zero_modo::CuArray{F, 3},
     Npoint::I,
+    n_copies::I,
     zero_mode::Array{CompiledKernel},
     gx2::Array{CompiledKernel},
     compute_ener::Array{CompiledKernel}
@@ -88,7 +89,7 @@ function compute_energy!(
         end
     end 
     
-    CUDA.@sync @inbounds @views energy.= CUDA.sum(ener, dims=(2, 3))[:,1,1,:] ./ (Npoint^2)
+    CUDA.@sync @inbounds @views energy.= CUDA.sum(ener, dims=(2, 3, 4))[:,1,1,1] ./ (Npoint^2 * n_copies)
     return nothing
 end
 
@@ -137,7 +138,7 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
     gradient = CUDA.zeros(F, n_ords, Npoint, Npoint, n_comps, n_copies)
     x2 = CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies)
 
-    energia = CUDA.zeros(F, n_ords, n_copies)
+    energia = CUDA.zeros(F, n_ords)
     ener = CUDA.zeros(F, n_ords, Npoint, Npoint, n_copies)
     zero_modo = CUDA.zeros(F, n_ords, n_comps, n_copies)
 
@@ -146,22 +147,11 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
     zero_mode = Array{CompiledKernel}(undef,n_copies); 
     compute_ener = Array{CompiledKernel}(undef,n_copies); 
 
-    en_fnames = [en_fname]
-    for i in 2:n_copies
-        push!(en_fnames, get_copy_energy_filename(en_fname, i))
-    end
-
     # Handle energy measurement array and file opening
     if args.iter_start == 1
-        mean_energy_files = [open_energy_file(en_fname, "w", true)] # with header
-        for i in 2:n_copies
-            push!(mean_energy_files, open_energy_file(en_fnames[i], "w", true))
-        end
+        mean_energy_file = open_energy_file(en_fname, "w", true) # with header
     else
-        mean_energy_files = [open_energy_file(en_fname, "a", false)] # without header, appending
-        for i in 2:n_copies
-            push!(mean_energy_files, open_energy_file(en_fnames[i], "a", false))
-        end
+        mean_energy_file = open_energy_file(en_fname, "a", false) # without header, appending
     end
 
     # randomization of NHMC
@@ -192,16 +182,14 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
             end
         end
         
-        compute_energy!(energia, x, ener, zero_modo, Npoint, zero_mode, gx2, compute_ener)
+        compute_energy!(energia, x, ener, zero_modo, Npoint, n_copies, zero_mode, gx2, compute_ener)
         
         # Store energy measurements if saving lattice
         if save_lattice
             @inbounds @views ener_meas[:,:,:,:,t] .= ener
         end
         
-        for i in 1:n_copies
-            @inbounds @views write_line(mean_energy_files[i], Array(energia[:, i]))
-        end
+        @inbounds @views write_line(mean_energy_file, Array(energia))
         x_back .= x
         args.iter_start = t + 1
         
@@ -216,12 +204,8 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
     
     # Final cleanup and file operations
     save_state(checkpt_fname, args)
-    for i in 1:n_copies
-        close(mean_energy_files[i])
-        print(current_time(), "Mean energy ")
-        n_copies > 1 && print("of copy $i ")
-        println("written to file: ", en_fnames[i])
-    end
+    close(mean_energy_file)
+    println(current_time(), "Mean energy written to file: ", en_fname)
 
     # Saving energy site-by-site on matlab file
     save_lattice && save_matlab_energy(lat_fname, Array(ener_meas))

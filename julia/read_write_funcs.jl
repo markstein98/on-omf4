@@ -24,13 +24,6 @@ function write_line(file::IOStream, array::Vector{T}) where {T}
     println(file)
 end
 
-function get_copy_energy_filename(energy_filename, n_copy)
-    if n_copy < 2
-        return energy_filename
-    end
-    return energy_filename[1:end-4] * "_copy" * string(n_copy) * ".txt"
-end
-
 function get_seconds(time::String)
     seconds = 0
     sep = findfirst('-', time)
