@@ -36,7 +36,7 @@ function get_lat_checkpoint(lat_fname::String)
     return fname
 end
 
-function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::String=""; lat_chkpt::String="", config_fname::String="", max_saving_time::Int=600)
+function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::String=""; lat_chkpt::String="", config_fname::String="", max_execution_time::String="23:50:00")
     new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
     lat_present = false
     if lat_fname != ""
@@ -63,7 +63,7 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
         get_energy_filename(old_checkpoint_fname),
         config_fname,
         new_checkpoint_fname,
-        max_saving_time,
+        max_execution_time,
         typeof(old_args.Npoint)(old_args.iter_start),
         old_args.x,
         lat_present ? lat_fname : nothing,
@@ -74,7 +74,7 @@ function adapt_old_checkpoint_copies(old_checkpoint_fname::String, lat_fname::St
     return
 end
 
-function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""; lat_chkpt::String="", config_fname::String="", max_saving_time::Int=600)
+function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""; lat_chkpt::String="", config_fname::String="", max_execution_time::String="23:50:00")
     new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
     lat_present = false
     if lat_fname != ""
@@ -101,7 +101,7 @@ function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""
         get_energy_filename(old_checkpoint_fname),
         config_fname,
         new_checkpoint_fname,
-        max_saving_time,
+        max_execution_time,
         typeof(old_args.Npoint)(old_args.iter_start),
         reshape(old_args.x, size(old_args.x)..., 1),
         lat_present ? lat_fname : nothing,

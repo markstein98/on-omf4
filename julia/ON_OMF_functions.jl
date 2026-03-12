@@ -104,6 +104,7 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
     # Print some logging information
     println(get_infos_string(args; header="[Simulation Infos]: ", prepend="\n", append="\n"))
     println(current_time(), "Variables initialization started.")
+    start_time = time()
 
     # Extract (almost) all the arguments
     Npoint        = args.Npoint
@@ -119,6 +120,7 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
     nhmc_rng      = args.nhmc_rng
     en_fname      = args.en_fname
     checkpt_fname = args.checkpt_fname
+    end_time      = start_time + get_seconds(args.max_execution_time)
 
     # Determine if we should save lattice data
     save_lattice = args.lat_fname !== nothing
@@ -171,8 +173,6 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
     print(current_time(), "Variables initialization and Kernel compilation successfully completed. ")
     println("Simulation is starting...")
 
-    jobid = get_job_id()
-
     # Main computation loop
     for t = args.iter_start:n_meas
         for _ in 1:measure_every
@@ -194,7 +194,7 @@ function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Inte
         args.iter_start = t + 1
         
         # Check remaining time and save state if needed
-        if get_remaining_time(jobid) < args.max_saving_time
+        if time() >= end_time
             # time's almost up, save state and exit
             save_state(checkpt_fname, args)
             execute_self(checkpt_fname)
@@ -242,7 +242,7 @@ function launch_main_omf(config_fname::String)
     n_ords = conf.max_ptord + one(conf.max_ptord)
     args = OMF_args(
         conf.Npoint, conf.n_meas, conf.NHMC, conf.dt, conf.n_comps, conf.max_ptord, conf.measure_every, conf.n_copies,
-        cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_saving_time, one(conf.Npoint),
+        cuda_rng, nhmc_rng, conf.en_fname, config_fname, conf.checkpt_fname, conf.max_execution_time, one(conf.Npoint),
         CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_comps, conf.n_copies),
         conf.lat_file,
         conf.lat_file == nothing ? nothing : CUDA.zeros(floatType, n_ords, conf.Npoint, conf.Npoint, conf.n_copies, conf.n_meas)

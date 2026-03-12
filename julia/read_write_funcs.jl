@@ -39,31 +39,8 @@ function get_seconds(time::String)
     return seconds
 end
 
-function get_job_id()
-    return get(ENV, "SLURM_JOB_ID", "")
-end
-
 function get_job_name()
     return get(ENV, "SLURM_JOB_NAME", "")
-end
-
-function get_remaining_time(jobid::String)
-    if jobid == "" # Only for testing on non-SLURM environments
-        fname = "remaining_time.txt"
-        if isfile(fname)
-            f = open(fname)
-            t = tryparse(Int, readline(f))
-            close(f)
-            t !== nothing && return t
-        end
-        return 100000
-    end
-    t = read(`squeue -h -j $jobid -o "%L"`, String)
-    return get_seconds(t)
-end
-
-function get_remaining_time()
-    return get_remaining_time(get_job_id())
 end
 
 function save_state(fname::String, data)
@@ -89,7 +66,7 @@ function save_matlab_energy(lat_fname::String, lat)
     return
 end
 
-mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
+mutable struct OMF_args{F <: AbstractFloat, I <: Integer}
     const Npoint::I
     const n_meas::I
     const NHMC::I
@@ -103,7 +80,7 @@ mutable struct OMF_args{F <: AbstractFloat, I <: Integer, I2 <: Integer}
     const en_fname::String
     const config_fname::String
     const checkpt_fname::String
-    const max_saving_time::I2
+    const max_execution_time::String
     iter_start::I
     x::CuArray{F, 5}
     const lat_fname::Union{Nothing, String}

@@ -76,13 +76,24 @@ function parse_config_file(fname, checkpt_fname=nothing)
     else
         lat_file = nothing
     end
-    cuda_seed         = Int(get(cfg, "cuda_seed", 0))
-    cpu_rng_seed      = Int(get(cfg, "cpu_rng_seed", 0))
-    max_saving_time   = Int(get(cfg, "max_saving_time", 600))
+    cuda_seed    = Int(get(cfg, "cuda_seed", 0))
+    cpu_rng_seed = Int(get(cfg, "cpu_rng_seed", 0))
+
+    if haskey(cfg, "max_execution_time")
+        max_execution_time = cfg["max_execution_time"]
+        if haskey(cfg, "max_saving_time")
+            println("[WARNING]: Detected deprecated configuration 'max_saving_time'; ignoring it.")
+        end
+    elseif haskey(cfg, "max_saving_time")
+        println("[WARNING]: Detected deprecated configuration 'max_saving_time'; change it to 'max_execution_time', a string in the format D-HH:MM:SS.")
+        max_execution_time = string(86400 - Int(cfg["max_saving_time"]))
+    else
+        max_execution_time = string(86400 - 600)
+    end
 
     return (
         Npoint = Npoint, n_meas = n_meas, NHMC = NHMC, dt = dt, n_comps = n_comps, max_ptord = max_ptord,
         en_fname = en_fname, checkpt_fname = checkpt_fname, measure_every = measure_every, n_copies = n_copies,
-        lat_file = lat_file, cuda_seed = cuda_seed, cpu_rng_seed = cpu_rng_seed, max_saving_time = max_saving_time
+        lat_file = lat_file, cuda_seed = cuda_seed, cpu_rng_seed = cpu_rng_seed, max_execution_time = max_execution_time
     )
 end
