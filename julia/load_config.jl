@@ -88,7 +88,7 @@ function parse_config_file(fname, checkpt_fname=nothing)
         println("[WARNING]: Detected deprecated configuration 'max_saving_time'; change it to 'max_execution_time', a string in the format D-HH:MM:SS.")
         max_execution_time = string(86400 - Int(cfg["max_saving_time"]))
     else
-        max_execution_time = string(86400 - 600)
+        max_execution_time = "23:50:00"
     end
 
     return (

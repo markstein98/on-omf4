@@ -95,7 +95,7 @@ The main simulation parameters are configured in `simulation_configurations/conf
 - `measure_every`: Controls measurement frequency by saving one measurement for every `measure_every`, in order to decrease autocorrelation. (Default: 1)
 - `n_copies`: Number of independent lattice configurations to simulate in parallel, allowing for better statistics. (Default: 1)
 - `energy_site_by_site_matlab`: If specified, saves the spatial distribution of energy across all lattice sites in MATLAB format for detailed analysis. (Default: disabled)
-- `max_saving_time`: Maximum time in seconds allocated for saving the simulation state before the program exits. (Default: 600 seconds or 10 minutes)
+- `max_execution_time`: String, in format "D-HH:MM:SS", of maximum execution time; leave enough time to save the state before exiting. (Default: "23:50:00")
 - `cuda_seed`: Seed for GPU random number generator for reproducibility. (Default: `0` -> random)
 - `cpu_rng_seed`: Seed for CPU random number generator for reproducibility. (Default: `0` -> random)
 - `intBits`: Bit precision for integer variables on GPU. Allowed values: 32 for Int32, or 64 for Int64. (Default: 32)
@@ -105,12 +105,7 @@ The main simulation parameters are configured in `simulation_configurations/conf
 
 The simulation is launched by the script `call_sbatch.sh` (make sure it is executable, with the command `chmod +x call_sbatch.sh`).
 
-The SLURM job parameters are configured in `call_sbatch.sh` (lines 10-20), you can change these parameters accordingly to your needs and your SLURM environment availability:
-
-- **GPU**: Requests 1 A100 80GB GPU (`--gres=gpu:a100_80g:1`)
-- **Memory**: 80GB RAM allocation
-- **Time**: 1 day runtime limit
-- **Partition**: Uses `gpu` partition with `gpu` QoS
+The SLURM job parameters are configured in `call_sbatch.sh` (lines 10-20), you can change these parameters accordingly to your needs and your SLURM environment availability.
 
 ### Execution Options
 
