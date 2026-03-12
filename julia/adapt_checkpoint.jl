@@ -24,6 +24,14 @@ function OMF_args(Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I
     iter_start=iter_start, x=x)
 end
 
+function OMF_args(Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I, measure_every::I, n_copies::I, cuda_rng::CUDA.RNG, nhmc_rng::Random.TaskLocalRNG,
+    en_fname::String, config_fname::String, checkpt_fname::String, max_saving_time::I2, iter_start::I, x::CuArray{F, 4},
+    lat_fname::Union{Nothing, String}, ener_meas::Union{Nothing, CuArray{F, 5}}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
+    return (Npoint=Npoint, n_meas=n_meas, NHMC=NHMC, dt=dt, n_comps=n_comps, max_ptord=max_ptord, measure_every=measure_every, n_copies=n_copies,
+    cuda_rng=cuda_rng, nhmc_rng=nhmc_rng, en_fname=en_fname, config_fname=config_fname, checkpt_fname=checkpt_fname, max_saving_time=max_saving_time,
+    iter_start=iter_start, x=x, lat_fname=lat_fname, ener_meas=ener_meas)
+end
+
 function get_energy_filename(checkpt_fname::String)
     fname = "../energies" * checkpt_fname[findlast('/', checkpt_fname):end] # changes directory
     fname = fname[1:findlast('.', fname)] * "txt" # changes the extension
@@ -109,5 +117,36 @@ function adapt_old_checkpoint(old_checkpoint_fname::String, lat_fname::String=""
     )
     serialize(new_checkpoint_fname, new_args)
     println("New checkpoint saved to file: ", new_checkpoint_fname)
+    return
+end
+
+function adapt_checkpoint_time(old_checkpoint_fname::String)
+    new_checkpoint_fname = old_checkpoint_fname[1:end-4] * "_new.jld"
+    old_args = deserialize(old_checkpoint_fname)
+    max_execution_time = string(86400 - old_args.max_saving_time)
+    new_args = OMF_args(
+        old_args.Npoint,
+        old_args.n_meas,
+        old_args.NHMC,
+        old_args.dt,
+        old_args.n_comps,
+        old_args.max_ptord,
+        old_args.measure_every,
+        old_args.n_copies,
+        old_args.cuda_rng,
+        old_args.nhmc_rng,
+        old_args.en_fname,
+        old_args.config_fname,
+        old_args.checkpoint_filename,
+        max_execution_time,
+        old_args.iter_start,
+        old_args.x,
+        old_args.lat_fname,
+        old_args.ener_meas
+    )
+    serialize(new_checkpoint_fname, new_args)
+    println("New checkpoint saved to file: ", new_checkpoint_fname)
+    println("REMEMBER TO RENAME IT BACK TO: ", old_checkpoint_fname)
+    println("BEFORE RESUMING EXECUTION.")
     return
 end
