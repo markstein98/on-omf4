@@ -99,7 +99,7 @@ end
     return nothing
 end
 
-function main_omf(args::OMF_args{F, I, I2}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
+function main_omf(args::OMF_args{F, I}) where {F <: AbstractFloat, I <: Integer}
 
     # Print some logging information
     println(get_infos_string(args; header="[Simulation Infos]: ", prepend="\n", append="\n"))
