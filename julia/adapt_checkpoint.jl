@@ -25,7 +25,7 @@ function OMF_args(Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I
 end
 
 function OMF_args(Npoint::I, n_meas::I, NHMC::I, dt::F, n_comps::I, max_ptord::I, measure_every::I, n_copies::I, cuda_rng::CUDA.RNG, nhmc_rng::Random.TaskLocalRNG,
-    en_fname::String, config_fname::String, checkpt_fname::String, max_saving_time::I2, iter_start::I, x::CuArray{F, 4},
+    en_fname::String, config_fname::String, checkpt_fname::String, max_saving_time::I2, iter_start::I, x::CuArray{F, 5},
     lat_fname::Union{Nothing, String}, ener_meas::Union{Nothing, CuArray{F, 5}}) where {F <: AbstractFloat, I <: Integer, I2 <: Integer}
     return (Npoint=Npoint, n_meas=n_meas, NHMC=NHMC, dt=dt, n_comps=n_comps, max_ptord=max_ptord, measure_every=measure_every, n_copies=n_copies,
     cuda_rng=cuda_rng, nhmc_rng=nhmc_rng, en_fname=en_fname, config_fname=config_fname, checkpt_fname=checkpt_fname, max_saving_time=max_saving_time,
@@ -150,3 +150,8 @@ function adapt_checkpoint_time(old_checkpoint_fname::String)
     println("BEFORE RESUMING EXECUTION.")
     return
 end
+
+if length(ARGS) == 1
+    adapt_checkpoint_time(ARGS[1])
+end
+
